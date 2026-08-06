@@ -7,6 +7,7 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -23,6 +24,13 @@ class SemanticIndexEntry(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     __tablename__ = "semantic_index_entries"
     __table_args__ = (
+        Index(
+            "ix_semantic_index_entries_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
         UniqueConstraint(
             "user_id",
             "source_type",
