@@ -1,0 +1,27 @@
+# Normalize line endings to LF in the repository on all platforms.
+# This prevents CRLF noise in diffs when Agents on Windows vs CI on Linux
+# touch the same files, and keeps shell scripts (.ps1/.cjs) byte-identical.
+
+* text=auto
+
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+
+*.py text eol=lf
+*.cjs text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.css text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+
+# Binary files must never be normalized
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
