@@ -16,7 +16,7 @@
 | AI Agent Engineer | Workflow 走 Registry（G3/G4） | ✅ | 两 workflow 启动解析 AgentSpec；`build_runtime_registry()` 双 Runtime |
 | Memory Engineer | M2 后台模型调用统一路由 | ✅ | `conversation_summary/knowledge_capture/knowledge_insights/memory_engines` 改走 ModelRouter（LOCAL 模式） |
 | Tool & Automation | Sprint 5 预研（3 份设计） | ✅ 只读 | 已归档 `docs/MIGRATION_SPRINT_2_TOOL_*.md` |
-| Frontend Evolution | Sprint 4 预研 | ⚠️ 未收到产出 | 见 §5 遗留 |
+| Frontend Evolution | Sprint 4 预研 | ✅ 只读 | 已归档 `docs/MIGRATION_SPRINT_2_FRONTEND_PRE_STUDY.md` |
 
 ## 2. 所有权核对结论（Tech Lead）
 
@@ -62,7 +62,9 @@
    本轮仅 growth/research 已接线；其余由各 Owner 在 flag 开前切换。
 2. **Tool Gateway policy_gate 审计接线**：AI 已给建议代码（`MIGRATION_SPRINT_2_AI_HANDOFF.md §5`），
    由 Tool & Automation 在 Sprint 5 落地（不改变 R2/R3 执行语义）。
-3. **Frontend Evolution Sprint 4 预研**：本轮未收到产出，需补（或 Sprint 4 开始时直接做）。
+3. ~~Frontend Evolution Sprint 4 预研~~：✅ 已补齐并归档
+   （四文件拆分方案 + hooks 抽取 + investment 16 项视觉回归清单 + `[module]` 死路由确认 +
+   `providerLabel` 等重复工具清单，Sprint 4 任务卡直接复用）。
 4. **QA 复核授权例外文件**：Sprint 3 开始时由 QA 复核 5 个新测试与评测改动。
 
 ## 7. 验收标准对照（Sprint 2）
