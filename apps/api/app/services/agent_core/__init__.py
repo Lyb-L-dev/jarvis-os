@@ -1,4 +1,9 @@
-from app.services.agent_core.catalog import AGENT_SPECS, get_agent_spec
+from app.services.agent_core.catalog import (
+    AGENT_SPECS,
+    agent_effective_tools,
+    effective_tools_for_spec,
+    get_agent_spec,
+)
 from app.services.agent_core.consistency import (
     ShadowConsistencyResult,
     check_shadow_consistency,
@@ -63,6 +68,7 @@ from app.services.agent_core.runtime import (
 
 __all__ = [
     "AGENT_SPECS",
+    "agent_effective_tools",
     "ActionKind",
     "ActionPolicy",
     "AgentId",
@@ -109,6 +115,7 @@ __all__ = [
     "StepStatus",
     "WorkflowRuntime",
     "build_runtime_registry",
+    "effective_tools_for_spec",
     "check_shadow_consistency",
     "get_agent_spec",
     "router_enforcement_enabled",

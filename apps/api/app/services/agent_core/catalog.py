@@ -12,6 +12,55 @@ from app.services.agent_core.contracts import (
     RuntimeKind,
 )
 
+_TOOL_RISK_RANK = {
+    RiskLevel.READ_ONLY: 0,
+    RiskLevel.DRAFT: 1,
+    RiskLevel.CONFIRMED_WRITE: 2,
+    RiskLevel.NEVER_AUTOMATE: 3,
+}
+
+
+def agent_effective_tools(
+    agent_id: AgentId,
+    *,
+    max_risk_level: RiskLevel,
+    confirmation_actions: frozenset[ActionKind],
+) -> tuple[str, ...]:
+    """Registry-derived tool whitelist for an Agent (H5 single source view).
+
+    ``TOOL_REGISTRY.allowed_agents`` is the single source of tool<->Agent
+    authorization. This function derives the effective tool set an Agent may
+    request by applying the Agent's declared risk ceiling and confirmation
+    scope. ``AgentSpec.allowed_tools`` is a reconciliation-locked mirror of this
+    view (see ``agent_core.reconciliation``), and consumers such as the Tool
+    Gateway runtime cross-check may call this directly for the freshest view.
+    """
+
+    ceiling = _TOOL_RISK_RANK[max_risk_level]
+    from app.services.tool_catalog import TOOL_REGISTRY  # deferred: avoid import cycle
+
+    tools = [
+        tool.tool_id
+        for tool in TOOL_REGISTRY.list()
+        if agent_id in tool.allowed_agents
+        and _TOOL_RISK_RANK[tool.risk_level] <= ceiling
+        and (
+            tool.risk_level is not RiskLevel.CONFIRMED_WRITE
+            or tool.action_kind in confirmation_actions
+        )
+    ]
+    return tuple(sorted(tools))
+
+
+def effective_tools_for_spec(spec: AgentSpec) -> tuple[str, ...]:
+    """Convenience wrapper for consumers holding a full AgentSpec."""
+
+    return agent_effective_tools(
+        spec.agent_id,
+        max_risk_level=spec.max_risk_level,
+        confirmation_actions=spec.confirmation_actions,
+    )
+
 AGENT_SPECS: tuple[AgentSpec, ...] = (
     AgentSpec(
         agent_id=AgentId.CORE,
@@ -167,6 +216,7 @@ AGENT_SPECS: tuple[AgentSpec, ...] = (
             "computer.screen.info",
             "system.status.read",
             "draft.text.prepare",
+            "workspace.file.restore",
             "workspace.file.write",
         ),
         max_steps=8,
