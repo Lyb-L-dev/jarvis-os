@@ -55,3 +55,41 @@ class RuntimeRegistry:
             return self._runtimes[kind]
         except KeyError as exc:
             raise RuntimeUnavailableError(f"Runtime not registered: {kind}") from exc
+
+
+class DirectRuntime:
+    """Direct Runtime registration boundary (G4).
+
+    Sprint 2 registers the runtime so Router v2 can resolve a Direct execution
+    path; actual low-latency chat execution remains in the existing chat route
+    until Router Stage 3 grants execution. ``execute`` never calls a model,
+    tool, or workflow.
+    """
+
+    kind = RuntimeKind.DIRECT
+
+    async def execute(self, request: RuntimeRequest) -> AsyncIterator[RuntimeEvent]:
+        yield RuntimeEvent(run_id=str(request.run.run_id), event_type="runtime_started")
+
+
+class WorkflowRuntime:
+    """Workflow Runtime registration boundary (G4).
+
+    LangGraph workflows are launched by their own services (research/growth);
+    this registration documents the boundary and lets audit records reference
+    the selected runtime. ``execute`` does not start a graph by itself.
+    """
+
+    kind = RuntimeKind.WORKFLOW
+
+    async def execute(self, request: RuntimeRequest) -> AsyncIterator[RuntimeEvent]:
+        yield RuntimeEvent(run_id=str(request.run.run_id), event_type="runtime_started")
+
+
+def build_runtime_registry() -> RuntimeRegistry:
+    """Register the two v2 runtimes; resolution still requires an enabled flag."""
+
+    registry = RuntimeRegistry()
+    registry.register(DirectRuntime())
+    registry.register(WorkflowRuntime())
+    return registry

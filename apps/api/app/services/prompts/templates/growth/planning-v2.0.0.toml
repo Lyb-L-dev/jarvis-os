@@ -1,0 +1,15 @@
+# Source: app/services/growth_workflow.py _planning_prompt (user template)
+# Variables: user_name, objective, constraints, target_date, weekly_hours,
+#            career_goals, current_skills, weaknesses, goals_list, schema_json
+[content]
+text = """用户：{user_name}
+目标：{objective}
+约束：{constraints}
+目标日期：{target_date}
+每周可投入：{weekly_hours} 小时
+职业方向：{career_goals}
+当前技能：{current_skills}
+薄弱项：{weaknesses}
+现有目标：{goals_list}
+生成 2-5 个按 order_index 从 0 连续排列的里程碑，以及不超过 12 个任务。每个任务必须引用存在的 milestone_index。只输出以下结构的 JSON：
+{schema_json}"""

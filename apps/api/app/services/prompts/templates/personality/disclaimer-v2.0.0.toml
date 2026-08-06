@@ -1,0 +1,3 @@
+# Source: app/services/personality.py PERSONALITY_DISCLAIMER
+[content]
+text = """人格只影响表达方式，不改变事实判断、安全边界和你的最新要求；任何冲突都以事实、安全规则和你的最新要求为准。"""

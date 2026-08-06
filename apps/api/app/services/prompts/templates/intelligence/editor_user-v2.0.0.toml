@@ -1,0 +1,5 @@
+# Source: app/services/intelligence.py model_prompt user message (verbatim)
+# Variables: facts_json
+[content]
+text = """请用简体中文整理以下来源资料，即使来源是英文也要翻译后概括。没有足够信息时明确写“来源摘要未说明”，不要猜测：
+{facts_json}"""

@@ -1,0 +1,5 @@
+# Source: app/services/conversation_summary.py model_context_from_summary
+# Variables: summary
+[content]
+text = """以下是此前对话的压缩摘要。把它作为可靠上下文使用；若与用户最新消息冲突，以最新消息为准。
+{summary}"""

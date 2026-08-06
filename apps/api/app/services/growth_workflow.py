@@ -29,6 +29,13 @@ from app.schemas.growth import (
     GeneratedGrowthPlan,
     GrowthWorkflowCreateRequest,
 )
+from app.services.agent_core import AgentId, build_default_registry
+from app.services.agent_core.contracts import ActionKind
+from app.services.agent_core.policy import (
+    policy_enforcement_enabled,
+    policy_step_refs,
+)
+from app.services.agent_core.routing import PolicyRouter
 from app.services.model_gateway import (
     ChatMessage,
     RouteDecision,
@@ -36,8 +43,26 @@ from app.services.model_gateway import (
     local_runtime_fallback,
     resolve_route,
 )
+from app.services.prompts import render_or_fallback
 
 WORKFLOW_VERSION = "growth-planning-v1"
+
+_GROWTH_PLAN_SCHEMA = {
+    "title": "计划标题",
+    "summary": "计划摘要",
+    "milestones": [
+        {"title": "阶段", "description": "结果", "order_index": 0}
+    ],
+    "tasks": [
+        {
+            "title": "任务",
+            "description": "完成标准",
+            "milestone_index": 0,
+            "priority": 3,
+            "estimated_minutes": 60,
+        }
+    ],
+}
 
 
 class GrowthWorkflowState(TypedDict, total=False):
@@ -74,6 +99,7 @@ class GrowthWorkflowService:
         payload: GrowthWorkflowCreateRequest,
     ) -> AgentRunRecord:
         self._require_enabled(settings)
+        spec = build_default_registry().get(AgentId.GROWTH)
         request = GrowthPlanningRequest(
             user_id=user.id,
             objective=payload.objective.strip(),
@@ -90,9 +116,9 @@ class GrowthWorkflowService:
             user_id=user.id,
             request_type="growth_planning",
             request_id=request.id,
-            agent_id="growth",
-            agent_version="2.0.0",
-            runtime="workflow",
+            agent_id=spec.agent_id.value,
+            agent_version=spec.version,
+            runtime=spec.default_runtime.value,
             workflow_version=WORKFLOW_VERSION,
             thread_id=str(run_id),
             status="created",
@@ -102,6 +128,17 @@ class GrowthWorkflowService:
         )
         db.add(run)
         await db.commit()
+        if policy_enforcement_enabled(settings):
+            policy = PolicyRouter().route(ActionKind.GENERATE_DRAFT)
+            await self._record_step(
+                db,
+                run,
+                sequence=0,
+                step_key="policy_gate",
+                kind="policy",
+                status="completed",
+                output_refs=policy_step_refs(policy),
+            )
         return await self._invoke(
             db,
             settings,
@@ -554,13 +591,31 @@ class GrowthWorkflowService:
             reason="growth_workflow_confirmed_model_choice",
         )
         route = resolve_route(settings, decision)
-        prompt = self._planning_prompt(request, user, profile, goals)
+        prompt = render_or_fallback(
+            "growth.planning",
+            settings,
+            fallback=self._planning_prompt(request, user, profile, goals),
+            user_name=user.name if user else "用户",
+            objective=request.objective,
+            constraints=request.constraints or "未补充",
+            target_date=request.target_date or "未设置",
+            weekly_hours=request.weekly_hours,
+            career_goals=str(profile.career_goals if profile else []),
+            current_skills=str(profile.current_skills if profile else []),
+            weaknesses=str(profile.weaknesses if profile else []),
+            goals_list=str([goal.title for goal in goals[:8]]),
+            schema_json=json.dumps(_GROWTH_PLAN_SCHEMA, ensure_ascii=False),
+        )
         messages = [
             ChatMessage(
                 role="system",
-                content=(
-                    "你是 Jarvis Growth Agent。只输出有效 JSON，不输出 Markdown 或隐藏推理。"
-                    "计划必须现实、可执行，并严格遵守用户每周时间约束。"
+                content=render_or_fallback(
+                    "growth.agent_system",
+                    settings,
+                    fallback=(
+                        "你是 Jarvis Growth Agent。只输出有效 JSON，不输出 Markdown 或隐藏推理。"
+                        "计划必须现实、可执行，并严格遵守用户每周时间约束。"
+                    ),
                 ),
             ),
             ChatMessage(role="user", content=prompt),
@@ -626,22 +681,6 @@ class GrowthWorkflowService:
         profile: UserProfile | None,
         goals: list[Goal],
     ) -> str:
-        schema = {
-            "title": "计划标题",
-            "summary": "计划摘要",
-            "milestones": [
-                {"title": "阶段", "description": "结果", "order_index": 0}
-            ],
-            "tasks": [
-                {
-                    "title": "任务",
-                    "description": "完成标准",
-                    "milestone_index": 0,
-                    "priority": 3,
-                    "estimated_minutes": 60,
-                }
-            ],
-        }
         return (
             f"用户：{user.name if user else '用户'}\n"
             f"目标：{request.objective}\n"
@@ -654,7 +693,7 @@ class GrowthWorkflowService:
             f"现有目标：{[goal.title for goal in goals[:8]]}\n"
             "生成 2-5 个按 order_index 从 0 连续排列的里程碑，以及不超过 12 个任务。"
             "每个任务必须引用存在的 milestone_index。只输出以下结构的 JSON：\n"
-            f"{json.dumps(schema, ensure_ascii=False)}"
+            f"{json.dumps(_GROWTH_PLAN_SCHEMA, ensure_ascii=False)}"
         )
 
     @staticmethod
