@@ -166,3 +166,51 @@ flowchart LR
 - DeepSeek 评测与正式调用一样必须逐次确认费用，失败时不自动降级；
 - 网页不提供覆盖恢复按钮；
 - OpenClaw 不属于当前运行依赖，也没有主机权限。
+
+---
+
+## v2 迁移状态（2026-08-06，迁移路线图 Sprint 0-6 完成）
+
+本文档为 v1.1 架构总览；迁移路线图（Sprint 0-6）已在 v1 生产路径上渐进落地，
+全部合入 `dev`（`main` 保持发布基线）。以下为本轮新增/改造的组件，权威细节见
+`docs/MIGRATION_SPRINT_1..6.md` 与各 ADR：
+
+```mermaid
+flowchart TB
+    subgraph v2["v2 新增/改造（Feature Flag 灰度，默认关）"]
+        REPO["db/repositories + uow.py<br/>唯一数据出口"]
+        ENUM["db/enums.py + CHECK 约束<br/>AgentApproval/Memory/ToolExecution/AgentRun"]
+        CKPT["db/checkpoint.py<br/>checkpointer 下沉（H2）"]
+        PROMPT["services/prompts/**<br/>24 模板 + 版本注册表（flag 灰度）"]
+        ROUTER2["Router v2 阶段 1 一致性校验<br/>Policy 审计读取点"]
+        REG["Agent Registry<br/>effective_tools 派生视图 + R1-R5 对账"]
+        MROUTE["后台模型调用统一走 ModelRouter"]
+        CU3["Computer-use 阶段 3<br/>沙箱确认后修改（R2）"]
+        BACKUP2["backup.ps1 vault 归档 + backup-drill.ps1"]
+        FE["前端 lib/api/** 领域模块 + generated.ts<br/>四巨型组件拆分"]
+    end
+    CORE["Jarvis Core API（FastAPI）"] --> REPO
+    CORE --> ENUM
+    CORE --> CKPT
+    CORE --> PROMPT
+    CORE --> ROUTER2
+    CORE --> REG
+    CORE --> MROUTE
+    CORE --> CU3
+    CORE --> BACKUP2
+    CORE --> FE
+```
+
+要点：
+
+- **数据层**：Repository/UoW 为新增边界（未强制迁移全部 service，渐进推进）；
+  状态枚举四层统一（DB CHECK + Pydantic + TS union，AgentRun 命名联合为遗留项）；
+- **AI 层**：Prompt 注册表、Router 一致性校验、workflow 走 AgentSpec 均默认关
+  （`v2_prompt_registry_enabled` / `v2_router_enforcement_enabled` / `v2_policy_enforcement_enabled`），
+  开即逐字等价或仅审计；
+- **工具层**：Computer-use 阶段 3 已启用（`computer_use_stage=3`，R2 预览-批准-执行 +
+  沙箱备份 + 可回滚）；n8n 测试账号工作流为环境门控（`available=False`）；
+- **前端**：`lib/api.ts` 为兼容层（372 导出冻结），领域实现在 `lib/api/**`；
+  四巨型组件已拆至 ≤289 行/文件；
+- **迁移**：`20260608_0030`（状态 CHECK）、`20260608_0031`（HNSW ANN）已落库未应用，
+  应用流程见 `docs/MIGRATION_SPRINT_1.md §5`。
