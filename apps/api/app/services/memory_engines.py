@@ -22,8 +22,12 @@ from app.services.memory import (
 )
 from app.services.model_gateway import (
     ChatMessage,
+    ModelMode,
+    ModelRouter,
     ResolvedRoute,
+    RoutingContext,
     execute_model_call,
+    resolve_route,
 )
 from app.services.semantic_index import ollama_root_url
 
@@ -159,11 +163,17 @@ class QwenMemoryEngine:
         source_attribution: str,
     ) -> list[EngineCandidate]:
         del shadow_run_id, source_attribution
+        resolved = resolve_route(
+            settings,
+            ModelRouter(settings).route(RoutingContext(mode=ModelMode.LOCAL)),
+        )
+        # 记忆影子提取只走本地模型（ModelRouter 决定），绝不静默调用 DeepSeek。
         route = ResolvedRoute(
-            requested_provider="ollama",
-            provider_used="ollama",
-            model_used=settings.ollama_model,
+            requested_provider=resolved.requested_provider,
+            provider_used=resolved.provider_used,
+            model_used=resolved.model_used,
             route_reason="memory_shadow_qwen",
+            fallback_reason=resolved.fallback_reason,
         )
         result = await execute_model_call(
             settings,

@@ -29,6 +29,13 @@ from app.schemas.research import (
     ResearchSourceCreate,
     ResearchWorkflowCreateRequest,
 )
+from app.services.agent_core import AgentId, build_default_registry
+from app.services.agent_core.contracts import ActionKind
+from app.services.agent_core.policy import (
+    policy_enforcement_enabled,
+    policy_step_refs,
+)
+from app.services.agent_core.routing import PolicyRouter
 from app.services.intelligence import (
     canonicalize_url,
     fingerprint,
@@ -42,9 +49,47 @@ from app.services.model_gateway import (
     local_runtime_fallback,
     resolve_route,
 )
+from app.services.prompts import render_or_fallback
 
 WORKFLOW_VERSION = "research-agent-v1"
 MIN_RESEARCH_SOURCES = 2
+
+_RESEARCH_REPORT_SCHEMA = {
+    "title": "研究报告标题",
+    "executive_summary": "只概括来源支持的结论",
+    "facts": [{"statement": "事实", "source_refs": ["S1"]}],
+    "viewpoints": [
+        {
+            "statement": "来源表达的观点",
+            "attribution": "观点主体",
+            "source_refs": ["S1"],
+        }
+    ],
+    "inferences": [
+        {
+            "statement": "明确标记的推断",
+            "basis_refs": ["S1", "S2"],
+            "confidence": "medium",
+        }
+    ],
+    "uncertainties": ["待核验的信息缺口"],
+    "recommended_actions": ["下一步研究行动，不包含自动交易或外部操作"],
+}
+
+
+def _research_source_blocks(sources: list[ResearchSource]) -> list[str]:
+    return [
+        "\n".join(
+            (
+                f"[{source.citation_key}] {source.title}",
+                f"来源：{source.source_name}",
+                f"URL：{source.canonical_url}",
+                f"可信度：{source.trust_score}/5",
+                f"来源摘录：{source.excerpt}",
+            )
+        )
+        for source in sources
+    ]
 
 
 class ResearchWorkflowState(TypedDict, total=False):
@@ -81,6 +126,7 @@ class ResearchWorkflowService:
         payload: ResearchWorkflowCreateRequest,
     ) -> AgentRunRecord:
         self._require_enabled(settings)
+        spec = build_default_registry().get(AgentId.RESEARCH)
         request = ResearchRequest(
             user_id=user.id,
             question=payload.question.strip(),
@@ -99,9 +145,9 @@ class ResearchWorkflowService:
             user_id=user.id,
             request_type="research",
             request_id=request.id,
-            agent_id="research",
-            agent_version="2.0.0",
-            runtime="workflow",
+            agent_id=spec.agent_id.value,
+            agent_version=spec.version,
+            runtime=spec.default_runtime.value,
             workflow_version=WORKFLOW_VERSION,
             thread_id=str(run_id),
             status="created",
@@ -111,6 +157,17 @@ class ResearchWorkflowService:
         )
         db.add(run)
         await db.commit()
+        if policy_enforcement_enabled(settings):
+            policy = PolicyRouter().route(ActionKind.GENERATE_DRAFT)
+            await self._record_step(
+                db,
+                run,
+                sequence=0,
+                step_key="policy_gate",
+                kind="policy",
+                status="completed",
+                output_refs=policy_step_refs(policy),
+            )
         return await self._invoke(
             db,
             settings,
@@ -789,15 +846,29 @@ class ResearchWorkflowService:
                 reason="research_workflow_confirmed_model_choice",
             ),
         )
+        report_prompt = render_or_fallback(
+            "research.report",
+            settings,
+            fallback=self._research_prompt(request, sources),
+            question=request.question,
+            scope=request.scope or "未额外限定",
+            research_plan=json.dumps(request.research_plan, ensure_ascii=False),
+            source_blocks="\n\n".join(_research_source_blocks(sources)),
+            schema_json=json.dumps(_RESEARCH_REPORT_SCHEMA, ensure_ascii=False),
+        )
         messages = [
             ChatMessage(
                 role="system",
-                content=(
-                    "你是 Jarvis Research Agent。只能依据给定来源工作，不得声称访问了其他网页。"
-                    "严格区分事实、来源观点和推断。只输出有效 JSON，不输出隐藏推理。"
+                content=render_or_fallback(
+                    "research.agent_system",
+                    settings,
+                    fallback=(
+                        "你是 Jarvis Research Agent。只能依据给定来源工作，不得声称访问了其他网页。"
+                        "严格区分事实、来源观点和推断。只输出有效 JSON，不输出隐藏推理。"
+                    ),
                 ),
             ),
-            ChatMessage(role="user", content=self._research_prompt(request, sources)),
+            ChatMessage(role="user", content=report_prompt),
         ]
         try:
             result = await execute_model_call(
@@ -863,49 +934,15 @@ class ResearchWorkflowService:
 
     @staticmethod
     def _research_prompt(request: ResearchRequest, sources: list[ResearchSource]) -> str:
-        schema = {
-            "title": "研究报告标题",
-            "executive_summary": "只概括来源支持的结论",
-            "facts": [{"statement": "事实", "source_refs": ["S1"]}],
-            "viewpoints": [
-                {
-                    "statement": "来源表达的观点",
-                    "attribution": "观点主体",
-                    "source_refs": ["S1"],
-                }
-            ],
-            "inferences": [
-                {
-                    "statement": "明确标记的推断",
-                    "basis_refs": ["S1", "S2"],
-                    "confidence": "medium",
-                }
-            ],
-            "uncertainties": ["待核验的信息缺口"],
-            "recommended_actions": ["下一步研究行动，不包含自动交易或外部操作"],
-        }
-        source_blocks = []
-        for source in sources:
-            source_blocks.append(
-                "\n".join(
-                    (
-                        f"[{source.citation_key}] {source.title}",
-                        f"来源：{source.source_name}",
-                        f"URL：{source.canonical_url}",
-                        f"可信度：{source.trust_score}/5",
-                        f"来源摘录：{source.excerpt}",
-                    )
-                )
-            )
         return (
             f"研究问题：{request.question}\n"
             f"研究范围：{request.scope or '未额外限定'}\n"
             f"研究计划：{json.dumps(request.research_plan, ensure_ascii=False)}\n\n"
             "可使用的全部来源如下。不得创建其他引用：\n\n"
-            + "\n\n".join(source_blocks)
+            + "\n\n".join(_research_source_blocks(sources))
             + "\n\n每条事实和观点至少带一个 source_refs；推断使用 basis_refs。"
             "如果来源冲突，在观点或不确定性中说明。只输出以下结构 JSON：\n"
-            + json.dumps(schema, ensure_ascii=False)
+            + json.dumps(_RESEARCH_REPORT_SCHEMA, ensure_ascii=False)
         )
 
     @staticmethod
