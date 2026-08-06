@@ -486,17 +486,15 @@ async def test_pg_status_check_constraint_exists(
     constraint_name: str,
     values: tuple[str, ...],
 ) -> None:
-    row = (
-        await pg_session.execute(
-            text(
-                "SELECT conname FROM pg_constraint "
-                "JOIN pg_class ON pg_class.oid = conrelid "
-                "WHERE pg_class.relname = :table AND conname = :name"
-            ),
-            {"table": table, "name": constraint_name},
-        )
-        .first()
+    result = await pg_session.execute(
+        text(
+            "SELECT conname FROM pg_constraint "
+            "JOIN pg_class ON pg_class.oid = conrelid "
+            "WHERE pg_class.relname = :table AND conname = :name"
+        ),
+        {"table": table, "name": constraint_name},
     )
+    row = result.first()
 
     assert row is not None
     assert constraint_name == f"ck_{table}_status"
@@ -556,7 +554,7 @@ async def test_pg_status_invalid_value_is_rejected(
     await pg_session.refresh(execution)
 
     row = _row_builder(model, user, run, execution)
-    setattr(row, column, "definitely-not-a-valid-status")
+    setattr(row, column, "bogus-status")
     pg_session.add(row)
 
     with pytest.raises(IntegrityError):

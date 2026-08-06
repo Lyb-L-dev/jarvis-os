@@ -5,13 +5,15 @@ gateway guards. Complements the flow tests in ``test_tool_gateway.py``.
 
 from __future__ import annotations
 
+import os
 from collections.abc import AsyncIterator
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.core.config import Settings
 from app.db.base import Base
@@ -33,20 +35,33 @@ from app.services.tool_gateway import (
 
 @pytest.fixture
 async def db_session() -> AsyncIterator[AsyncSession]:
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    url = os.getenv("JARVIS_TEST_POSTGRES_URL", "").strip()
+    if not url:
+        url = "sqlite+aiosqlite:///:memory:"
+    if url.startswith("postgresql"):
+        engine = create_async_engine(url, poolclass=NullPool)
+    else:
+        engine = create_async_engine(url)
     async with engine.begin() as connection:
+        if url.startswith("postgresql"):
+            await connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await connection.run_sync(Base.metadata.create_all)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
         session.add(User(name="不变量测试用户", timezone="Asia/Shanghai"))
         await session.commit()
         yield session
+    if url.startswith("postgresql"):
+        async with engine.begin() as connection:
+            for table in reversed(Base.metadata.sorted_tables):
+                await connection.execute(table.delete())
     await engine.dispose()
 
 
 def gateway_settings(tmp_path: Path, **overrides: object) -> Settings:
+    pg_url = os.getenv("JARVIS_TEST_POSTGRES_URL", "").strip()
     values: dict[str, object] = {
-        "database_url": "sqlite+aiosqlite:///:memory:",
+        "database_url": pg_url or "sqlite+aiosqlite:///:memory:",
         "v2_tool_gateway_enabled": True,
         "v2_approval_center_enabled": True,
         "tool_sandbox_root": str(tmp_path),

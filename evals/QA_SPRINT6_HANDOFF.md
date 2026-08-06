@@ -52,6 +52,15 @@ scripts/check.ps1 → exit 0
 - 真跑命令：`$env:JARVIS_TEST_POSTGRES_URL=...; pytest apps/api/tests/test_pg_integration.py -q`
   （要求可丢弃测试库 + vector 扩展；无 PG 时不得计为通过）。
 
+**Round 2（2026-08-06，PG 真库回填）**：本机 PostgreSQL 18.4 + pgvector 0.8.6
+（官方 Windows 构建）下 **23/23 通过**。首次真跑暴露 2 处测试缺陷并已修正
+（详见 MIGRATION_SPRINT_6.md §6.4）：
+1. `test_pg_status_check_constraint_exists`：`await ... .first()` 括号缺失
+   （此前从未真库执行）→ 修正为 `result = await ...; result.first()`。
+2. `test_pg_status_invalid_value_is_rejected`：非法值 30 字符超出
+   `memories.status VARCHAR(16)` 宽度，先触发长度错误而非 CHECK →
+   改用 `"bogus-status"`（12 字符）。
+
 ## 2. 契约四层对账报告（静态一致性测试）
 
 新增 `apps/api/tests/test_contract_four_layer.py`（纳入门禁收集）：
@@ -73,6 +82,11 @@ scripts/check.ps1 → exit 0
 `test_tool_invariants.py`（3 例）复跑全绿：R3 账本计数恒 0、R2 未确认写恒 0、
 伪造 R3 定义被参数校验层拦截。建议 Sprint 6 全栈复跑时在 PG 真库再跑一次
 确认方言无关。
+
+**Round 2（2026-08-06，PG 真库回填）**：`test_tool_invariants.py` 已加 env-gated
+PG 支持（设 `JARVIS_TEST_POSTGRES_URL` 时 db_session/gateway_settings 切 PG，
+未设置保持原 SQLite 行为），**SQLite 3/3 与 PG 3/3 均通过**——R2/R3 不变量
+方言无关性已确认；PG 下 checkpoint 走 Postgres 路径。
 
 ## 4. check.ps1 / CI 对齐最终决定（Sprint 1 遗留收口）
 
@@ -124,7 +138,9 @@ scripts/check.ps1 → exit 0
 ## 7. 遗留清单
 
 1. 8 项环境门控 verify 脚本需全栈环境复跑回填（PG + Ollama + n8n + 正常 Edge）。
-2. PG 集成 23 例真跑回填（含 ANN/HNSW 激活后的 EXPLAIN 断言）。
+2. ~~PG 集成 23 例真跑回填（含 ANN/HNSW 激活后的 EXPLAIN 断言）~~：
+   ✅ Round 2 已闭环（PG 18.4 + pgvector 0.8.6，23/23 通过；R2/R3 不变量
+   PG 3/3 通过），详见 §1.3/§3 与 MIGRATION_SPRINT_6.md §6。
 3. 四层对账：TS 命名 AgentRunStatus 联合 + Pydantic AgentRunStatus 别名
    （strict xfail 已标记，修复后移除）。
 4. `v2_agent_core_enabled` 移除时同步删除 test_v2_feature_flags.py 对应断言。
