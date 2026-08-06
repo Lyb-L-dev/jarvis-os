@@ -9,13 +9,10 @@ import {
   listSystemBackups,
   verifySystemBackup,
 } from "@/lib/api";
+import { formatDateTimeMedium } from "@/lib/utils";
 
 function formatDate(value?: string | null) {
-  if (!value) return "尚未验证";
-  return new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatDateTimeMedium(value, "尚未验证");
 }
 
 function formatSize(bytes: number) {

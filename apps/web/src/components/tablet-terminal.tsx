@@ -18,32 +18,17 @@ import {
 } from "@/lib/api";
 import { JarvisMark } from "@/components/jarvis-mark";
 import {
+  providerBadge,
+  type SpeechRecognitionConstructor,
+  type SpeechRecognitionLike,
+} from "@/lib/utils";
+import {
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-
-type SpeechResultEvent = {
-  results: ArrayLike<{
-    0: { transcript: string };
-    isFinal: boolean;
-  }>;
-};
-
-type SpeechRecognitionLike = {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  onresult: ((event: SpeechResultEvent) => void) | null;
-  onerror: ((event: { error: string }) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-};
-
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 type WakeLockSentinel = {
   release: () => Promise<void>;
@@ -62,9 +47,7 @@ const tabletModes: Array<{
 
 function providerLabel(provider?: string | null) {
   if (provider === "ollama") return "LOCAL QWEN";
-  if (provider === "deepseek") return "DEEPSEEK";
-  if (provider === "mimo") return "MIMO";
-  return "JARVIS";
+  return providerBadge(provider);
 }
 
 function temporaryMessage(

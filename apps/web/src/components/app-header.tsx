@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { StatusPulse } from "@/components/motion/StatusPulse";
 import { getHeaderStatus, type HeaderStatusResponse } from "@/lib/api";
+import { providerDisplayNames } from "@/lib/utils";
 
 type CoreState = "checking" | "ready" | "degraded" | "offline";
 
@@ -16,11 +17,7 @@ const CORE_META: Record<CoreState, { label: string }> = {
   offline: { label: "离线" },
 };
 
-const PROVIDER_LABEL: Record<string, string> = {
-  mimo: "MiMo",
-  deepseek: "DeepSeek",
-  ollama: "本地 Qwen",
-};
+const PROVIDER_LABEL: Record<string, string> = providerDisplayNames;
 
 export function AppHeader() {
   const [status, setStatus] = useState<HeaderStatusResponse | null>(null);

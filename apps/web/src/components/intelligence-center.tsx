@@ -27,6 +27,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { SpecialistHeader } from "@/components/agents/SpecialistHeader";
 import { ResearchWorkflowPlanner } from "@/components/research-workflow-planner";
+import { formatDateTime, providerDisplayNames } from "@/lib/utils";
 
 type IntelligenceTab = "brief" | "feed" | "sources";
 
@@ -68,20 +69,12 @@ function categoryLabel(category: NewsCategory) {
   return categories.find((item) => item.value === category)?.short ?? category;
 }
 
-function formatDateTime(value?: string | null) {
-  if (!value) return "尚未刷新";
-  return new Date(value).toLocaleString("zh-CN", {
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function providerLabel(item: NewsItem) {
-  if (item.provider_used === "mimo") return "MiMo 整理";
+  if (item.provider_used === "mimo") return `${providerDisplayNames.mimo} 整理`;
   if (item.provider_used === "ollama") {
-    return item.fallback_reason ? "本地 Qwen · 自动回退" : "本地 Qwen";
+    return item.fallback_reason
+      ? `${providerDisplayNames.ollama} · 自动回退`
+      : providerDisplayNames.ollama;
   }
   return "规则分析";
 }

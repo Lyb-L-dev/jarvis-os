@@ -13,12 +13,9 @@ import {
 } from "@/lib/api";
 import { useEffect, useMemo, useState } from "react";
 import { MemoryShadowLab } from "@/components/memory-shadow-lab";
+import { providerDisplayNames } from "@/lib/utils";
 
-const providerLabels: Record<EvaluationProvider, string> = {
-  mimo: "MiMo",
-  deepseek: "DeepSeek",
-  ollama: "本地 Qwen",
-};
+const providerLabels: Record<EvaluationProvider, string> = providerDisplayNames;
 
 const providerRoles: Record<EvaluationProvider, string> = {
   mimo: "日常主模型",

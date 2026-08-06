@@ -15,6 +15,8 @@ import { motion } from "motion/react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { providerTitle as providerLabel } from "@/lib/utils";
+
 import {
   JarvisOrb,
   type AIState,
@@ -118,13 +120,6 @@ function greeting(date: Date) {
   if (hour < 14) return "中午好";
   if (hour < 18) return "下午好";
   return "晚上好";
-}
-
-function providerLabel(provider?: string | null) {
-  if (provider === "mimo") return "MiMo";
-  if (provider === "deepseek") return "DeepSeek";
-  if (provider === "ollama") return "Local Qwen";
-  return "Jarvis Router";
 }
 
 export function Dashboard() {

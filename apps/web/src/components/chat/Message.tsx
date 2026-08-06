@@ -12,18 +12,12 @@ import { motion } from "motion/react";
 
 import { JarvisMark } from "@/components/jarvis-mark";
 import type { ChatMessage } from "@/lib/api";
+import { providerBadge as providerLabel } from "@/lib/utils";
 
 const fallbackLabels: Record<string, string> = {
   mimo_not_configured: "MiMo 未配置，已使用本地模型",
   deepseek_not_configured: "DeepSeek 未配置，已使用本地模型",
 };
-
-function providerLabel(provider?: string | null) {
-  if (provider === "ollama") return "LOCAL · QWEN";
-  if (provider === "deepseek") return "DEEPSEEK";
-  if (provider === "mimo") return "MIMO";
-  return "JARVIS";
-}
 
 type MessageProps = {
   converting: boolean;
