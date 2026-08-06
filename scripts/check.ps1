@@ -29,6 +29,7 @@ Assert-LastCommand "Backend lint"
     --basetemp $PytestTempDirectory `
     -o "cache_dir=$PytestCacheDirectory" `
     (Join-Path $ProjectRoot "apps\api\tests") `
+    (Join-Path $ProjectRoot "apps\api\app\db\tests") `
     (Join-Path $ProjectRoot "apps\desktop\tests")
 Assert-LastCommand "Backend tests"
 

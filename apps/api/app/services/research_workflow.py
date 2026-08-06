@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
+from app.db.checkpoint import WorkflowCheckpointerProvider
 from app.db.models import (
     AgentApprovalRecord,
     AgentRunRecord,
@@ -28,7 +29,6 @@ from app.schemas.research import (
     ResearchSourceCreate,
     ResearchWorkflowCreateRequest,
 )
-from app.services.growth_workflow import WorkflowCheckpointerProvider
 from app.services.intelligence import (
     canonicalize_url,
     fingerprint,

@@ -1,23 +1,18 @@
 from __future__ import annotations
 
-import asyncio
-import hashlib
 import json
 import uuid
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from typing import Any, Literal, TypedDict
+from typing import Any, TypedDict
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
-from langgraph.checkpoint.memory import InMemorySaver
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
+from app.db.checkpoint import WorkflowCheckpointerProvider
 from app.db.models import (
     AgentApprovalRecord,
     AgentRunRecord,
@@ -65,42 +60,6 @@ class WorkflowStateError(RuntimeError):
 
 class WorkflowPlanFormatError(RuntimeError):
     pass
-
-
-class WorkflowCheckpointerProvider:
-    """PostgreSQL in production, process memory only for SQLite-based tests/dev."""
-
-    def __init__(self) -> None:
-        self._memory = InMemorySaver()
-        self._setup_lock = asyncio.Lock()
-        self._setup_databases: set[str] = set()
-
-    @staticmethod
-    def backend(settings: Settings) -> Literal["postgres", "memory"]:
-        return "postgres" if settings.database_url.startswith("postgresql") else "memory"
-
-    @staticmethod
-    def postgres_url(database_url: str) -> str:
-        return database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
-
-    @asynccontextmanager
-    async def open(
-        self,
-        settings: Settings,
-    ) -> AsyncIterator[tuple[BaseCheckpointSaver[Any], Literal["postgres", "memory"]]]:
-        if self.backend(settings) == "memory":
-            yield self._memory, "memory"
-            return
-
-        connection_url = self.postgres_url(settings.database_url)
-        database_key = hashlib.sha256(connection_url.encode()).hexdigest()
-        async with AsyncPostgresSaver.from_conn_string(connection_url) as saver:
-            if database_key not in self._setup_databases:
-                async with self._setup_lock:
-                    if database_key not in self._setup_databases:
-                        await saver.setup()
-                        self._setup_databases.add(database_key)
-            yield saver, "postgres"
 
 
 class GrowthWorkflowService:

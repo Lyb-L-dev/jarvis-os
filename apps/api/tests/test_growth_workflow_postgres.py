@@ -8,7 +8,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
 from app.core.config import Settings
-from app.services.growth_workflow import WorkflowCheckpointerProvider
+from app.db.checkpoint import WorkflowCheckpointerProvider
 
 
 class RecoveryState(TypedDict):
