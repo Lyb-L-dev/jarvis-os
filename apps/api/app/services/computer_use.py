@@ -111,6 +111,8 @@ def read_workspace_file(settings: Settings, relative_path: str) -> dict[str, obj
     target = (root / relative).resolve()
     if not target.is_relative_to(root):
         raise ComputerUseError("File path escaped the Jarvis tool sandbox")
+    if target.is_relative_to(root / ".backups"):
+        raise ComputerUseError("The .backups directory is not readable by tools")
     if not target.is_file():
         raise ComputerUseError("File does not exist in the tool sandbox")
     if target.suffix.casefold() not in ALLOWED_TEXT_SUFFIXES:
@@ -174,7 +176,10 @@ def build_plan(instruction: str, settings: Settings) -> list[dict[str, object]]:
                         "risk_level": "R2",
                         "requires_approval": True,
                         "target": path,
-                        "preview_hint": "需要先预览、再批准、再单独执行。",
+                        "preview_hint": (
+                            "需要先预览、再批准、再单独执行；写入前会保留原文件备份，"
+                            "可通过 workspace.file.restore 恢复。"
+                        ),
                     }
                 )
             else:

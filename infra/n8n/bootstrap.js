@@ -106,6 +106,13 @@ async function publishWorkflows() {
     .filter((file) => file.endsWith(".json"))
     .sort();
   const published = [];
+  const existing = await jsonRequest("/rest/workflows");
+  const existingByName = new Map(
+    (Array.isArray(existing.payload) ? existing.payload : []).map((workflow) => [
+      workflow.name,
+      workflow,
+    ]),
+  );
   for (const file of files) {
     const source = JSON.parse(
       fs.readFileSync(path.join(workflowDirectory, file), "utf8"),
@@ -119,17 +126,26 @@ async function publishWorkflows() {
       settings: source.settings,
       tags: [],
     };
-    const created = await jsonRequest("/rest/workflows", {
-      body: JSON.stringify(body),
-      method: "POST",
-    });
-    const workflow = created.payload;
+    let workflow = existingByName.get(source.name);
+    if (workflow?.id) {
+      const updated = await jsonRequest(`/rest/workflows/${workflow.id}`, {
+        body: JSON.stringify(body),
+        method: "PUT",
+      });
+      workflow = updated.payload;
+    } else {
+      const created = await jsonRequest("/rest/workflows", {
+        body: JSON.stringify(body),
+        method: "POST",
+      });
+      workflow = created.payload;
+    }
     if (!workflow?.id || !workflow?.versionId) {
       throw new Error(`n8n did not return an ID and version for ${file}`);
     }
     await jsonRequest(`/rest/workflows/${workflow.id}/activate`, {
       body: JSON.stringify({
-        description: "Jarvis Sprint 30 isolated sandbox workflow",
+        description: "Jarvis isolated automation workflow",
         name: source.name,
         versionId: workflow.versionId,
       }),

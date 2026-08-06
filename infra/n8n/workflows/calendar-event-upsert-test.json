@@ -1,0 +1,74 @@
+{
+  "id": "jarvisCalendarWriteTestV1",
+  "name": "Jarvis Calendar Write Test Account v1",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jarvis-calendar-write",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "jarvis-calendar-write-webhook",
+      "name": "Signed Ingress",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-240, 0],
+      "webhookId": "jarvis-calendar-write-v1"
+    },
+    {
+      "parameters": {
+        "calendarId": "primary",
+        "resource": "event",
+        "operation": "create",
+        "summary": "={{ $json.body.title }}",
+        "start": "={{ $json.body.starts_at }}",
+        "end": "={{ $json.body.ends_at }}",
+        "timeZone": "={{ $json.body.timezone }}",
+        "description": "={{ $json.body.notes }}",
+        "options": {}
+      },
+      "id": "jarvis-calendar-write-create",
+      "name": "Create Test Calendar Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 2,
+      "position": [-60, 0],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "jarvis-test-calendar-credential",
+          "name": "Jarvis Test Calendar OAuth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'completed', provider: 'n8n', account_alias: 'jarvis_test', event_id: $json.id, requested_window: { starts_at: $('Signed Ingress').first().json.body.starts_at, ends_at: $('Signed Ingress').first().json.body.ends_at }, idempotent: true, credential_exposed: false } }}",
+        "options": {}
+      },
+      "id": "jarvis-calendar-write-respond",
+      "name": "Return Created Event",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [120, 0]
+    }
+  ],
+  "connections": {
+    "Signed Ingress": {
+      "main": [[{"node": "Create Test Calendar Event", "type": "main", "index": 0}]]
+    },
+    "Create Test Calendar Event": {
+      "main": [[{"node": "Return Created Event", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  },
+  "pinData": {},
+  "versionId": "20260806-write-v1",
+  "tags": []
+}

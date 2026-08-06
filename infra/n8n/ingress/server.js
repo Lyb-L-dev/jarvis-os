@@ -16,6 +16,8 @@ const allowedPaths = new Map([
   ["/v1/status", "/webhook/jarvis-provider-status"],
   ["/v1/calendar/read", "/webhook/jarvis-calendar-read"],
   ["/v1/email/draft", "/webhook/jarvis-email-draft"],
+  ["/v1/calendar/write", "/webhook/jarvis-calendar-write"],
+  ["/v1/email/draft/create", "/webhook/jarvis-email-draft-create"],
 ]);
 const usedNonces = new Map();
 

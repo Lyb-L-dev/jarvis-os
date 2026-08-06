@@ -18,6 +18,8 @@ ALLOWED_INGRESS_PATHS = frozenset(
         "/v1/status",
         "/v1/calendar/read",
         "/v1/email/draft",
+        "/v1/calendar/write",
+        "/v1/email/draft/create",
     }
 )
 
