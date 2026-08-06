@@ -16,8 +16,12 @@ from app.db.models import (
 from app.db.models import ChatMessage as StoredChatMessage
 from app.services.model_gateway import (
     ChatMessage,
+    ModelMode,
+    ModelRouter,
     ResolvedRoute,
+    RoutingContext,
     execute_model_call,
+    resolve_route,
 )
 
 MAX_CAPTURE_SOURCE_CHARS = 24_000
@@ -134,11 +138,17 @@ async def generate_conversation_capture(
             await session.refresh(existing)
         return existing
 
+    resolved = resolve_route(
+        settings,
+        ModelRouter(settings).route(RoutingContext(mode=ModelMode.LOCAL)),
+    )
+    # 后台任务只走本地模型（ModelRouter 决定），绝不静默调用 DeepSeek。
     route = ResolvedRoute(
-        requested_provider="ollama",
-        provider_used="ollama",
-        model_used=settings.ollama_model,
+        requested_provider=resolved.requested_provider,
+        provider_used=resolved.provider_used,
+        model_used=resolved.model_used,
         route_reason="knowledge_capture_draft",
+        fallback_reason=resolved.fallback_reason,
     )
     model_messages = [
         ChatMessage(role="system", content=capture_system_prompt()),
@@ -184,9 +194,9 @@ async def generate_conversation_capture(
             conversation_id=conversation.id,
             assistant_message_id=None,
             requested_mode="local",
-            requested_provider="ollama",
-            provider_used="ollama",
-            model_used=settings.ollama_model,
+            requested_provider=route.requested_provider,
+            provider_used=route.provider_used,
+            model_used=route.model_used,
             route_reason="knowledge_capture_draft",
             fallback_reason=None,
             user_confirmed=True,
