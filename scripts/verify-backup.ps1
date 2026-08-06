@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$BackupPath,
-    [string]$BackupDirectory = ""
+    [string]$BackupDirectory = "",
+    [switch]$DryRun
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,6 +34,52 @@ $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 |
 $actualHash = (Get-FileHash -LiteralPath $ResolvedBackup -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($actualHash -ne $manifest.sha256) {
     throw "Backup checksum does not match its manifest."
+}
+
+$vaultVerifiedAt = $null
+$vaultVerifiedFileCount = $null
+if ($manifest.vault -and $manifest.vault.file_name) {
+    $vaultArchive = [System.IO.Path]::GetFullPath(
+        (Join-Path $BackupRoot $manifest.vault.file_name)
+    )
+    if (-not $vaultArchive.StartsWith(
+        $BackupPrefix,
+        [System.StringComparison]::OrdinalIgnoreCase
+    )) {
+        throw "Vault archive path escaped the configured backup directory."
+    }
+    if (-not (Test-Path -LiteralPath $vaultArchive)) {
+        throw "Vault archive listed in manifest was not found."
+    }
+    $vaultHash = (
+        Get-FileHash -LiteralPath $vaultArchive -Algorithm SHA256
+    ).Hash.ToLowerInvariant()
+    if ($vaultHash -ne $manifest.vault.sha256) {
+        throw "Vault archive checksum does not match its manifest."
+    }
+    $vaultFileCount = @(
+        tar -tzf $vaultArchive |
+            Where-Object { $_ -ne "./" -and $_ -ne "." }
+    ).Count
+    if ($vaultFileCount -ne [int]$manifest.vault.file_count) {
+        throw "Vault archive file count does not match its manifest."
+    }
+    $vaultVerifiedAt = [DateTime]::UtcNow.ToString("o")
+    $vaultVerifiedFileCount = $vaultFileCount
+}
+
+if ($DryRun) {
+    Write-Output "[dry-run] Backup: $ResolvedBackup (sha256 OK)"
+    if ($vaultVerifiedFileCount) {
+        Write-Output "[dry-run] Vault archive verified: $vaultVerifiedFileCount files"
+    }
+    else {
+        Write-Output "[dry-run] Vault archive: none in manifest"
+    }
+    Write-Output "[dry-run] Plan: docker cp, createdb jarvis_verify_<random>, pg_restore --exit-on-error, table count, alembic_version"
+    Write-Output "[dry-run] Plan: manifest update restore_verified_at / verified_table_count / alembic_version / vault_verified_*"
+    Write-Output "[dry-run] Complete. Nothing was executed."
+    exit 0
 }
 
 $containerName = "jarvis-postgres"
@@ -94,6 +141,10 @@ try {
         -NotePropertyValue ([int]$tableCount) -Force
     $manifest | Add-Member -NotePropertyName alembic_version `
         -NotePropertyValue $alembicVersion -Force
+    $manifest | Add-Member -NotePropertyName vault_verified_at `
+        -NotePropertyValue $vaultVerifiedAt -Force
+    $manifest | Add-Member -NotePropertyName vault_verified_file_count `
+        -NotePropertyValue $vaultVerifiedFileCount -Force
     [System.IO.File]::WriteAllText(
         $manifestPath,
         ($manifest | ConvertTo-Json -Depth 4),
@@ -101,6 +152,9 @@ try {
     )
 
     Write-Output "Restore verification passed: $tableCount tables, schema $alembicVersion."
+    if ($vaultVerifiedFileCount) {
+        Write-Output "Vault archive verified: $vaultVerifiedFileCount files."
+    }
 }
 finally {
     docker exec $containerName dropdb `
