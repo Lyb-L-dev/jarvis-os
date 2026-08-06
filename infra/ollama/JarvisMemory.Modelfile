@@ -1,0 +1,7 @@
+FROM qwen3:4b-instruct-2507-q4_K_M
+
+# Mem0 2.0 uses a comprehensive extraction prompt that exceeds Ollama's
+# default 4K context. This local alias reuses the existing model layers.
+PARAMETER num_ctx 16384
+PARAMETER num_predict 1000
+PARAMETER temperature 0

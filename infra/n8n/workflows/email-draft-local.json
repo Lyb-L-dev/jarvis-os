@@ -1,0 +1,47 @@
+{
+  "id": "jarvisEmailDraftV1",
+  "name": "Jarvis Email Draft Local v1",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jarvis-email-draft",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ba20f1d2-8dd7-42b5-8a1e-f37d768d18ae",
+      "name": "Signed Ingress",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-240, 0],
+      "webhookId": "609ebde5-cd77-4cb3-8286-5863997360b5"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'draft_only', provider: 'n8n', not_sent: true, account_alias: 'jarvis_sandbox', credential_used: false, draft: { to: $json.body.to, subject: $json.body.subject, body: $json.body.body } } }}",
+        "options": {}
+      },
+      "id": "e7d2bf60-f3e7-4f48-865e-496ee56ccc78",
+      "name": "Return Local Draft",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [20, 0]
+    }
+  ],
+  "connections": {
+    "Signed Ingress": {
+      "main": [[{"node": "Return Local Draft", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  },
+  "pinData": {},
+  "versionId": "2e795d81-f639-4ec9-8e40-6f42d9fe4839",
+  "tags": []
+}

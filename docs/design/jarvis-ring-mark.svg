@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="ring-halo" cx="50%" cy="50%" r="50%">
+      <stop stop-color="#22D3EE" stop-opacity="0.3"/>
+      <stop offset="0.55" stop-color="#22D3EE" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="32" r="25" fill="url(#ring-halo)"/>
+  <ellipse cx="32" cy="32" rx="23.4" ry="18.7" fill="none" stroke="#22D3EE" stroke-opacity="0.22" stroke-width="2.6"/>
+  <ellipse cx="32" cy="32" rx="22.6" ry="17.9" fill="none" stroke="#F2FDFF" stroke-opacity="0.96" stroke-width="1.5"/>
+  <text x="32" y="35.4" text-anchor="middle" font-family="Geist, 'MiSans', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="9.2" font-weight="600" letter-spacing="0.85" fill="#F2FDFF">JARVIS</text>
+</svg>

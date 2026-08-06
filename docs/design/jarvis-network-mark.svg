@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop stop-color="#22D3EE" stop-opacity="0.32"/>
+      <stop offset="0.55" stop-color="#22D3EE" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="core" cx="50%" cy="40%" r="65%">
+      <stop stop-color="#E8FDFF"/>
+      <stop offset="0.4" stop-color="#7EE7F8"/>
+      <stop offset="0.75" stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#0E7490"/>
+    </radialGradient>
+    <linearGradient id="arc" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#A5F3FC"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0.3"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 光晕 -->
+  <circle cx="32" cy="32" r="28" fill="url(#halo)"/>
+
+  <!-- 球壳与经纬网格 -->
+  <circle cx="32" cy="32" r="18.5" fill="#071820" fill-opacity="0.62" stroke="#3FD6F0" stroke-opacity="0.45" stroke-width="1.1"/>
+  <ellipse cx="32" cy="32" rx="16" ry="18.5" fill="none" stroke="#22D3EE" stroke-opacity="0.16" stroke-width="0.7"/>
+  <ellipse cx="32" cy="32" rx="9" ry="18.5" fill="none" stroke="#22D3EE" stroke-opacity="0.13" stroke-width="0.7"/>
+  <ellipse cx="32" cy="32" rx="18.5" ry="6.5" fill="none" stroke="#22D3EE" stroke-opacity="0.16" stroke-width="0.7"/>
+  <ellipse cx="32" cy="32" rx="18.5" ry="12.5" fill="none" stroke="#22D3EE" stroke-opacity="0.13" stroke-width="0.7"/>
+
+  <!-- 轨道弧线（跨球体） -->
+  <path d="M46.5 32 Q 32 2 17.5 32" fill="none" stroke="url(#arc)" stroke-opacity="0.5" stroke-width="0.9" stroke-linecap="round"/>
+  <path d="M32 46.5 Q 62 32 32 17.5" fill="none" stroke="url(#arc)" stroke-opacity="0.5" stroke-width="0.9" stroke-linecap="round"/>
+
+  <!-- 万物互联连线：中心 → 外环 / 内环，外环相邻节点 -->
+  <g stroke="#57D9F2" stroke-opacity="0.55" stroke-width="0.9">
+    <path d="M32 32 L46.5 32"/>
+    <path d="M32 32 L42.25 42.25"/>
+    <path d="M32 32 L32 46.5"/>
+    <path d="M32 32 L21.75 42.25"/>
+    <path d="M32 32 L17.5 32"/>
+    <path d="M32 32 L21.75 21.75"/>
+    <path d="M32 32 L32 17.5"/>
+    <path d="M32 32 L42.25 21.75"/>
+    <path d="M32 32 L37.66 37.66"/>
+    <path d="M32 32 L26.34 37.66"/>
+    <path d="M32 32 L26.34 26.34"/>
+    <path d="M32 32 L37.66 26.34"/>
+    <path d="M46.5 32 L42.25 42.25"/>
+    <path d="M42.25 42.25 L32 46.5"/>
+    <path d="M32 46.5 L21.75 42.25"/>
+    <path d="M21.75 42.25 L17.5 32"/>
+    <path d="M17.5 32 L21.75 21.75"/>
+    <path d="M21.75 21.75 L32 17.5"/>
+    <path d="M32 17.5 L42.25 21.75"/>
+    <path d="M42.25 21.75 L46.5 32"/>
+    <path d="M37.66 37.66 L26.34 37.66"/>
+    <path d="M26.34 37.66 L26.34 26.34"/>
+    <path d="M26.34 26.34 L37.66 26.34"/>
+    <path d="M37.66 26.34 L37.66 37.66"/>
+  </g>
+
+  <!-- 外环节点 -->
+  <g fill="#A5F3FC" stroke="#22D3EE" stroke-width="0.6">
+    <circle cx="46.5" cy="32" r="1.8"/>
+    <circle cx="42.25" cy="42.25" r="1.8"/>
+    <circle cx="32" cy="46.5" r="1.8"/>
+    <circle cx="21.75" cy="42.25" r="1.8"/>
+    <circle cx="17.5" cy="32" r="1.8"/>
+    <circle cx="21.75" cy="21.75" r="1.8"/>
+    <circle cx="32" cy="17.5" r="1.8"/>
+    <circle cx="42.25" cy="21.75" r="1.8"/>
+  </g>
+
+  <!-- 内环节点 -->
+  <g fill="#67E8F9" stroke="#22D3EE" stroke-width="0.5" stroke-opacity="0.7">
+    <circle cx="37.66" cy="37.66" r="1.3"/>
+    <circle cx="26.34" cy="37.66" r="1.3"/>
+    <circle cx="26.34" cy="26.34" r="1.3"/>
+    <circle cx="37.66" cy="26.34" r="1.3"/>
+  </g>
+
+  <!-- 核心 -->
+  <circle cx="32" cy="32" r="6" fill="url(#core)" fill-opacity="0.9"/>
+  <circle cx="32" cy="32" r="2.6" fill="#E8FDFF"/>
+</svg>

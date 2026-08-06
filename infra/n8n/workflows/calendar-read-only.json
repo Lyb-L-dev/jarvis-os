@@ -1,0 +1,47 @@
+{
+  "id": "jarvisCalendarReadV1",
+  "name": "Jarvis Calendar Read Only v1",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jarvis-calendar-read",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a54a25be-6a72-4534-bf39-01a4e9a9dc54",
+      "name": "Signed Ingress",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-240, 0],
+      "webhookId": "46df8088-daf2-4a59-ab59-1554951619bc"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'completed', provider: 'n8n', read_only: true, account_alias: 'jarvis_sandbox', credential_used: false, requested_window: { starts_at: $json.body.starts_at, ends_at: $json.body.ends_at }, events: [ { id: 'sandbox-focus-session', title: 'Jarvis 沙箱日历：AI 项目专注时段', starts_at: $json.body.starts_at, ends_at: $json.body.ends_at, source: 'local_test_fixture', read_only: true } ] } }}",
+        "options": {}
+      },
+      "id": "5e52a29f-e25f-4bd9-81ea-f2768637d458",
+      "name": "Return Read Only Events",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [20, 0]
+    }
+  ],
+  "connections": {
+    "Signed Ingress": {
+      "main": [[{"node": "Return Read Only Events", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  },
+  "pinData": {},
+  "versionId": "9093b3f2-b4dc-4583-ae03-0a84f4e9cdd0",
+  "tags": []
+}

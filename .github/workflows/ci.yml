@@ -1,0 +1,86 @@
+name: ci
+
+on:
+  push:
+    branches: [dev, "feat/**"]
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  backend:
+    name: Backend (ruff + pytest + security)
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: "3.12"
+      PYTHONUTF8: "1"
+      PIP_CACHE_DIR: "${{ github.workspace }}/.cache/pip"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PIP_CACHE_DIR }}
+          key: pip-${{ runner.os }}-${{ hashFiles('apps/api/pyproject.toml') }}
+
+      - name: Install API package (dev extras)
+        working-directory: apps/api
+        run: pip install -e ".[dev]"
+
+      - name: Ruff check
+        working-directory: apps/api
+        run: ruff check .
+
+      - name: Pytest (backend)
+        working-directory: apps/api
+        run: pytest --basetemp "$RUNNER_TEMP/pytest" -o "cache_dir=$RUNNER_TEMP/pytest-cache"
+
+      - name: Security check
+        working-directory: apps/api
+        run: pip-audit -r pyproject.toml
+
+  frontend:
+    name: Frontend (typecheck + lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+  deploy-rules:
+    name: Docker rules (compose + ingress syntax)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate compose file
+        run: docker compose -f infra/docker-compose.yml config --quiet
+
+      - name: Validate n8n ingress JS syntax
+        run: node --check infra/n8n/ingress/server.js
+
+      - name: Validate browser worker JS syntax
+        run: node --check apps/browser-worker/server.cjs

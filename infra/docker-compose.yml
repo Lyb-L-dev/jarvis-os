@@ -1,0 +1,134 @@
+name: jarvis-os
+
+services:
+  postgres:
+    # Official pgvector image, pinned to the existing PostgreSQL major version.
+    # The named data volume remains the canonical database store.
+    image: pgvector/pgvector:pg17
+    container_name: jarvis-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jarvis
+      POSTGRES_USER: jarvis
+      POSTGRES_PASSWORD: jarvis_dev_only
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - jarvis_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarvis -d jarvis"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  n8n:
+    profiles: ["automation"]
+    image: docker.n8n.io/n8nio/n8n:1.123.5
+    container_name: jarvis-n8n
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      N8N_HOST: jarvis-n8n
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      N8N_TEMPLATES_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      N8N_PUBLIC_API_DISABLED: "true"
+      N8N_COMMUNITY_PACKAGES_ENABLED: "false"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "true"
+      N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES: "true"
+      N8N_RUNNERS_ENABLED: "false"
+      N8N_GIT_NODE_DISABLE_BARE_REPOS: "true"
+      N8N_METRICS: "false"
+      N8N_PAYLOAD_SIZE_MAX: 1
+      EXECUTIONS_DATA_SAVE_ON_SUCCESS: none
+      EXECUTIONS_DATA_SAVE_ON_ERROR: none
+      EXECUTIONS_DATA_SAVE_ON_PROGRESS: "false"
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: 24
+      EXECUTIONS_DATA_PRUNE_MAX_COUNT: 100
+      DB_SQLITE_POOL_SIZE: 2
+      GENERIC_TIMEZONE: Asia/Shanghai
+      TZ: Asia/Shanghai
+      JARVIS_N8N_WORKFLOW_VERSION: sprint30-v2
+    entrypoint: ["/bin/sh", "/opt/jarvis/start.sh"]
+    volumes:
+      - jarvis_n8n_data:/home/node/.n8n
+      - ./n8n/start.sh:/opt/jarvis/start.sh:ro
+      - ./n8n/bootstrap.js:/opt/jarvis/bootstrap.js:ro
+      - ./n8n/workflows:/opt/jarvis/workflows:ro
+      - ../.data/n8n-secrets/n8n_encryption_key:/run/secrets/n8n_encryption_key:ro
+      - ../.data/n8n-secrets/n8n_owner_password:/run/secrets/n8n_owner_password:ro
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /home/node/.cache:size=128m,uid=1000,gid=1000,mode=0700
+    networks:
+      - automation
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /home/node/.n8n/.jarvis-workflows-sprint30-v2 && node -e \"fetch('http://127.0.0.1:5678/healthz/readiness').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\"",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+
+  n8n-ingress:
+    profiles: ["automation"]
+    image: docker.n8n.io/n8nio/n8n:1.123.5
+    container_name: jarvis-n8n-ingress
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    entrypoint: ["node", "/opt/jarvis/ingress/server.js"]
+    environment:
+      INGRESS_PORT: 5680
+      N8N_INTERNAL_URL: http://jarvis-n8n:5678
+    ports:
+      - "127.0.0.1:5680:5680"
+    volumes:
+      - ./n8n/ingress:/opt/jarvis/ingress:ro
+      - ../.data/n8n-secrets/webhook_secret:/run/secrets/jarvis_webhook_secret:ro
+    networks:
+      - automation
+      - automation-ingress
+    depends_on:
+      n8n:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5680/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  jarvis_postgres_data:
+  jarvis_n8n_data:
+
+networks:
+  automation:
+    internal: true
+    name: jarvis-automation-internal
+  automation-ingress:
+    name: jarvis-automation-ingress

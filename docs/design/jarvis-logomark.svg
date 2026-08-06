@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#000000"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="butt">
+    <path d="M 107.9 232.5 A 150 150 0 0 1 404.1 232.5"/>
+    <path d="M 404.1 279.5 A 150 150 0 0 1 107.9 279.5"/>
+  </g>
+  <text x="256" y="278" text-anchor="middle" font-family="Bahnschrift, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-weight="600" font-size="60" letter-spacing="2" fill="#FFFFFF">J.A.R.V.I.S</text>
+</svg>

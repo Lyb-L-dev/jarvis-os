@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <title>JARVIS Ring — 动态预览</title>
+  <style>
+    :root {
+      --bg: #07070a;
+      --panel: rgba(255,255,255,0.035);
+      --line: rgba(255,255,255,0.08);
+      --text: #f4f4f5;
+      --muted: #8b8f9c;
+      --energy: #22d3ee;
+    }
+    * { margin: 0; box-sizing: border-box; }
+    body {
+      background:
+        radial-gradient(circle at 72% 12%, rgba(34,211,238,0.10), transparent 30%),
+        radial-gradient(circle at 28% 86%, rgba(99,102,241,0.07), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 40px;
+    }
+    .stage { display: grid; grid-template-columns: 220px 1fr; gap: 32px; max-width: 1080px; margin: 0 auto; }
+
+    .sidebar {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px 14px;
+      backdrop-filter: blur(20px);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 18px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+    .brand img { width: 30px; height: 30px; }
+    .brand b { font-size: 15px; letter-spacing: 0.04em; }
+    .nav { display: flex; flex-direction: column; gap: 4px; }
+    .nav span { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; padding: 8px 6px 4px; }
+    .nav a { display: block; padding: 8px 10px; border-radius: 10px; color: var(--muted); text-decoration: none; font-size: 13px; }
+    .nav a.active { color: var(--text); background: rgba(34,211,238,0.10); border-left: 2px solid var(--energy); padding-left: 8px; }
+
+    .hero {
+      display: flex; align-items: center; gap: 44px;
+      background: linear-gradient(145deg, rgba(16,22,28,0.85), rgba(8,10,14,0.6));
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 48px 52px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::after {
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 22% 50%, rgba(34,211,238,0.08), transparent 42%);
+      pointer-events: none;
+    }
+    .orb-big { width: 230px; height: 230px; flex: 0 0 auto; }
+    .orb-big svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    .breathe { animation: breathe 4.2s ease-in-out infinite; transform-origin: 50% 50%; }
+    .halo-pulse { animation: haloPulse 4.2s ease-in-out infinite; }
+    .ring-glow { animation: glowPulse 4.2s ease-in-out infinite; }
+    .text-glow { animation: textGlow 4.2s ease-in-out infinite; }
+    .dash-orbit { animation: orbitSpin 22s linear infinite; transform-origin: 50% 50%; }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.025); }
+    }
+    @keyframes haloPulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+    @keyframes glowPulse {
+      0%, 100% { opacity: 0.35; }
+      50% { opacity: 0.75; }
+    }
+    @keyframes textGlow {
+      0%, 100% { opacity: 0.85; }
+      50% { opacity: 1; }
+    }
+    @keyframes orbitSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    .hero h1 { font-size: 44px; font-weight: 650; letter-spacing: 0.01em; }
+    .hero p { margin-top: 12px; color: var(--muted); font-size: 15px; line-height: 1.7; max-width: 430px; }
+    .hero .tag {
+      display: inline-block; margin-top: 20px; padding: 7px 14px;
+      border: 1px solid rgba(34,211,238,0.25); border-radius: 999px;
+      color: #a5f3fc; font-size: 12px; letter-spacing: 0.08em; background: rgba(34,211,238,0.06);
+    }
+
+    .sizes { display: flex; align-items: flex-end; gap: 36px; margin-top: 28px; padding: 0 12px; }
+    .sizes figure { text-align: center; }
+    .sizes figcaption { margin-top: 10px; color: var(--muted); font-size: 11px; }
+    .sizes img { display: block; }
+    .note { margin-top: 28px; padding: 0 12px; color: var(--muted); font-size: 12px; line-height: 1.8; }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="jarvis-ring-mark.svg" alt=""/>
+        <b>Jarvis OS</b>
+      </div>
+      <div class="nav">
+        <span>CORE</span>
+        <a class="active">Command Center</a>
+        <a>Conversation</a>
+        <span>SPECIALISTS</span>
+        <a>English Coach</a>
+        <a>Information</a>
+        <a>Growth</a>
+        <a>Career Radar</a>
+        <span>SYSTEMS</span>
+        <a>Observatory</a>
+        <a>Cost Center</a>
+      </div>
+    </aside>
+
+    <main>
+      <div class="hero">
+        <div class="orb-big">
+          <svg viewBox="0 0 64 64" aria-label="JARVIS Ring">
+            <defs>
+              <radialGradient id="rg-halo" cx="50%" cy="50%" r="50%">
+                <stop stop-color="#22D3EE" stop-opacity="0.32"/>
+                <stop offset="0.55" stop-color="#22D3EE" stop-opacity="0.08"/>
+                <stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <g class="breathe">
+              <circle class="halo-pulse" cx="32" cy="32" r="26" fill="url(#rg-halo)"/>
+              <g class="dash-orbit">
+                <ellipse cx="32" cy="32" rx="24.8" ry="20" fill="none" stroke="#22D3EE" stroke-opacity="0.28" stroke-width="0.7" stroke-dasharray="2 5"/>
+              </g>
+              <ellipse class="ring-glow" cx="32" cy="32" rx="23.4" ry="18.7" fill="none" stroke="#22D3EE" stroke-opacity="0.35" stroke-width="2.8"/>
+              <ellipse cx="32" cy="32" rx="22.6" ry="17.9" fill="none" stroke="#F2FDFF" stroke-opacity="0.98" stroke-width="1.5"/>
+              <text class="text-glow" x="32" y="35.4" text-anchor="middle" font-family="Geist, 'MiSans', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="9.2" font-weight="600" letter-spacing="0.85" fill="#F2FDFF">JARVIS</text>
+            </g>
+          </svg>
+        </div>
+        <div>
+          <h1>Jarvis OS</h1>
+          <p>细椭圆环 + 居中字标，贴近你给的参考图。环随状态呼吸：待命缓慢呼吸，聆听脉冲增强，思考环上光点流转，警报转为琥珀色光晕。</p>
+          <span class="tag">待命 IDLE · 4.2s 呼吸周期</span>
+        </div>
+      </div>
+
+      <div class="sizes">
+        <figure><img src="jarvis-ring-mark.svg" width="96" height="96" alt=""/><figcaption>96px · 侧边栏/平板</figcaption></figure>
+        <figure><img src="jarvis-ring-mark.svg" width="48" height="48" alt=""/><figcaption>48px · 标签页</figcaption></figure>
+        <figure><img src="jarvis-ring-mark.svg" width="24" height="24" alt=""/><figcaption>24px · 聊天气泡</figcaption></figure>
+        <figure><img src="jarvis-ring-mark.svg" width="16" height="16" alt=""/><figcaption>16px · favicon</figcaption></figure>
+      </div>
+
+      <p class="note">
+        说明：环 = Jarvis 核心边界；字标 = 品牌识别；呼吸节奏 = 系统状态。动效全部可被"减少动态效果"关闭。
+        提供纯白（jarvis-ring-white.png）与青白（jarvis-ring-cyan.png）两个配色，可在设置页切换。
+      </p>
+    </main>
+  </div>
+</body>
+</html>

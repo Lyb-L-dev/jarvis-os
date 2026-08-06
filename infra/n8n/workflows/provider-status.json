@@ -1,0 +1,47 @@
+{
+  "id": "jarvisProviderStatusV1",
+  "name": "Jarvis Provider Status v1",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jarvis-provider-status",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c4fc1700-2e87-4bb4-8f86-5d558bf0bb2e",
+      "name": "Signed Ingress",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-240, 0],
+      "webhookId": "fc8b657e-8a3e-48d0-b865-0c85c715875f"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'ready', provider: 'n8n', mode: 'isolated_sandbox', workflows: ['provider_status', 'calendar_read_only', 'email_draft_local'], real_accounts_connected: false, external_writes_enabled: false, redis_used: false } }}",
+        "options": {}
+      },
+      "id": "63cd352c-e46d-44d9-b4f0-c02666160b92",
+      "name": "Return Status",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [20, 0]
+    }
+  ],
+  "connections": {
+    "Signed Ingress": {
+      "main": [[{"node": "Return Status", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  },
+  "pinData": {},
+  "versionId": "e30663fa-f8d3-4ac2-a758-f30bb55aa1b6",
+  "tags": []
+}
