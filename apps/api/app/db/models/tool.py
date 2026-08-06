@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Integer,
@@ -17,11 +18,20 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.db.enums import (
+    ApprovalStatusValues,
+    ToolExecutionStatusValues,
+    check_sql,
+)
 
 
 class ToolExecutionRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "tool_executions"
     __table_args__ = (
+        CheckConstraint(
+            check_sql("status", ToolExecutionStatusValues),
+            name="status",
+        ),
         UniqueConstraint(
             "user_id",
             "tool_id",
@@ -85,6 +95,12 @@ class ToolExecutionRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class ToolApprovalRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "tool_approvals"
+    __table_args__ = (
+        CheckConstraint(
+            check_sql("status", ApprovalStatusValues),
+            name="status",
+        ),
+    )
 
     execution_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),

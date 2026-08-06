@@ -6,6 +6,11 @@ from typing import Any, Literal
 
 from pydantic import Field
 
+from app.db.enums import (
+    ApprovalStatus,
+    ToolApprovalStatus,
+    ToolExecutionStatus,
+)
 from app.schemas.common import APIModel
 
 
@@ -62,7 +67,7 @@ class ToolExecutionEventResponse(APIModel):
 class ToolApprovalResponse(APIModel):
     id: uuid.UUID
     kind: str
-    status: str
+    status: ToolApprovalStatus
     title: str
     reason_code: str
     risk_level: str
@@ -86,7 +91,7 @@ class ToolExecutionResponse(APIModel):
     tool_version: str
     action_kind: str
     risk_level: str
-    status: str
+    status: ToolExecutionStatus
     idempotency_key: str
     parameters_hash: str
     input_parameters: dict[str, Any]
@@ -107,7 +112,7 @@ class ToolExecutionResponse(APIModel):
 class ApprovalCenterItem(APIModel):
     id: uuid.UUID
     source: Literal["tool", "model"]
-    status: str
+    status: ApprovalStatus
     title: str
     reason_code: str
     risk_level: str
