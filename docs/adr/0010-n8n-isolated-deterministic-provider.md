@@ -67,3 +67,22 @@ n8n 自带审计会把三个内部 Webhook 标记为“Authentication=None”。
 
 拒绝。先证明隔离、签名、重放防护、故障降级和 Tool Gateway 审计，再单独立项真实账号接入。
 
+---
+
+## Sprint 5 修订（2026-08-06，Supersedes #6/#11 的部分措辞）
+
+本修订由 Tool & Automation Agent 在 Sprint 5 落地（Tech Lead 审核批准），不改变本 ADR 的
+隔离/签名/凭据边界原则，仅扩展已受控的路径与工作流范围：
+
+1. **#6 修订**：入口固定路径由 3 个扩为 **5 个**——新增
+   `/v1/calendar/write` 与 `/v1/email/draft/create`（复用 HMAC/时效/nonce/正文哈希/固定 key id，
+   仍仅监听 `127.0.0.1:5680` + internal 网络）。
+2. **#11 修订**：新增**测试账号**工作流 `calendar-event-upsert-test.json` 与
+   `email-draft-test-account.json`（webhook → Google Calendar 创建 / Gmail 创建草稿，
+   envelope 强制 `not_sent: true` / `credential_exposed: false`）。凭据仍为占位符，
+   工具注册 `available=False`（环境门控）；未配置测试账号前不产生任何真实外部写入。
+3. **不变项**：#12/#13 的真实日历修改与邮件发送仍需 R2 预览-批准-执行；
+   #14 投资交易、支付、删除数据、凭据操作仍为 R3；#16 凭据只在 `.data/n8n-secrets`。
+4. **启用前置**：测试账号就绪后按 `infra/n8n/workflows/README.md` 校验节点 schema →
+   替换凭据占位 → bump `JARVIS_N8N_WORKFLOW_VERSION`（bootstrap 已幂等化，不会重复发布）→
+   置 `available=True` 并更新本 ADR 的“后果”节。

@@ -131,7 +131,7 @@ class Settings(BaseSettings):
     # Sprint 37: controlled computer-use is opened by stage.
     # 1 = read-only inspection, 2 = plans and previews,
     # 3 = confirmed sandboxed modifications, 4 = external accounts.
-    computer_use_stage: int = 2
+    computer_use_stage: int = 3
 
     backup_enabled: bool = True
     backup_directory: str = "backups"
