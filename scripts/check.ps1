@@ -36,6 +36,8 @@ Assert-LastCommand "Backend tests"
 & (Join-Path $ProjectRoot "scripts\security-check.ps1")
 & $PythonPath (Join-Path $ProjectRoot "scripts\evaluate-prompts.py")
 Assert-LastCommand "Prompt and policy evaluation"
+& (Join-Path $ProjectRoot "scripts\backup-drill.ps1") -DryRun
+Assert-LastCommand "Backup drill dry-run"
 
 Push-Location (Join-Path $ProjectRoot "apps\web")
 try {
