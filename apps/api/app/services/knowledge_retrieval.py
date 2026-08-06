@@ -428,8 +428,8 @@ async def retrieve_knowledge(
         created_at=datetime.now(UTC),
     )
     session.add(retrieval_log)
-    await session.commit()
-    await session.refresh(retrieval_log)
+    # 事务所有权归调用方：检索函数无副作用，不在此处 commit。
+    # 上层（UoW / 路由层）统一控制提交，保证日志与整轮对话原子写入。
     return KnowledgeRetrievalResult(
         references=references,
         context=build_knowledge_context(references),
