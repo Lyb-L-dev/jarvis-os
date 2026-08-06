@@ -21,21 +21,12 @@ import {
   getCostOverview,
   listCostCalls,
 } from "@/lib/api";
+import { formatNumber, providerPlainLabels } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/common/AnimatedNumber";
 import { GlassPanel } from "@/components/common/GlassPanel";
 import { StatCard } from "@/components/common/StatCard";
 
-const providerLabels: Record<string, string> = {
-  mimo: "MiMo",
-  deepseek: "DeepSeek",
-  ollama: "Ollama",
-};
-
-function formatNumber(value: number) {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
-  return String(value);
-}
+const providerLabels: Record<string, string> = providerPlainLabels;
 
 function formatCost(value: number) {
   return value.toLocaleString("zh-CN", {

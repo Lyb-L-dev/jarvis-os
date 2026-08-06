@@ -18,6 +18,7 @@ import {
 } from "@/lib/api";
 import { AnimatePresence, motion } from "motion/react";
 import { ExternalLink, FileCheck2, FlaskConical, ShieldCheck } from "lucide-react";
+import { splitLines } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 
 type Props = {
@@ -65,13 +66,6 @@ function statusText(status: ResearchWorkflowRun["status"]) {
 function providerName(provider?: string | null) {
   if (!provider) return "尚未选择";
   return providerNames[provider] ?? provider;
-}
-
-function splitLines(value: string) {
-  return value
-    .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean);
 }
 
 export function ResearchWorkflowPlanner({

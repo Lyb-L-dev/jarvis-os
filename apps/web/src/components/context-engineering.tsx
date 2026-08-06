@@ -22,6 +22,7 @@ import {
   getContextOverview,
   listContextAssemblies,
 } from "@/lib/api";
+import { formatNumber, providerPlainLabels } from "@/lib/utils";
 
 const sectionLabels: Record<string, string> = {
   system: "系统",
@@ -30,11 +31,7 @@ const sectionLabels: Record<string, string> = {
   history: "历史",
 };
 
-const providerLabels: Record<string, string> = {
-  mimo: "MiMo",
-  deepseek: "DeepSeek",
-  ollama: "Ollama",
-};
+const providerLabels: Record<string, string> = providerPlainLabels;
 
 const agentLabels: Record<string, string> = {
   jarvis_core: "Jarvis Core",
@@ -45,12 +42,6 @@ const agentLabels: Record<string, string> = {
   investment_intelligence: "Investment",
   default: "默认预算",
 };
-
-function formatNumber(value: number) {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
-  return String(value);
-}
 
 function formatTime(value: string) {
   return new Intl.DateTimeFormat("zh-CN", {

@@ -30,6 +30,7 @@ import {
   type KnowledgeInsightCandidate,
   type KnowledgeVaultStatus,
 } from "@/lib/api";
+import { formatDateTimeMedium } from "@/lib/utils";
 
 const TYPE_LABELS: Record<string, string> = {
   inbox: "收件箱",
@@ -70,11 +71,7 @@ const INSIGHT_TYPE_LABELS: Record<
 };
 
 function formatDate(value?: string | null) {
-  if (!value) return "尚未扫描";
-  return new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatDateTimeMedium(value, "尚未扫描");
 }
 
 export function KnowledgeCenter() {
