@@ -13,7 +13,10 @@ services:
       POSTGRES_PASSWORD: jarvis_dev_only
       TZ: Asia/Shanghai
     ports:
-      - "127.0.0.1:5432:5432"
+      # Host 5432 is occupied by a native PostgreSQL 18.4 service used by
+      # other applications; the Jarvis DB container publishes on loopback
+      # 5433 instead (same loopback-only posture as the original C5 fix).
+      - "127.0.0.1:5433:5432"
     volumes:
       - jarvis_postgres_data:/var/lib/postgresql/data
     healthcheck:

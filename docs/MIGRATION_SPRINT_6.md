@@ -162,14 +162,29 @@ pgvector **0.8.6**（`andreiramani/pgvector_pgsql_windows` 官方 Windows 构建
     vault_configs 1、agent_runs 7、chat_messages 51、tool_executions 10）/
     五表状态预检 0 非法 / vault 校验和** → 临时库与容器内临时文件已清理。
 
-### 6.6 剩余项
+### 6.6 正式库切换（2026-08-06 晚，用户决策）
 
-- ~~备份/恢复演练的 Docker 容器路径~~：✅ 已真跑闭环（见 §6.5）；
-  `restore-backup.ps1` 的 vault 恢复路径仍仅在 dry-run 覆盖（未做破坏性实跑，
+**决策**：以 `jarvis-postgres` 容器库为正式库（项目 compose 原设计
+`127.0.0.1:5432`；数据最新：51 聊天/10 工具执行/6 知识文档）。原生 PG 18.4
+（127.0.0.1:5432）保留给其它应用，不停服。
+
+**实施**：
+- `infra/docker-compose.yml`：postgres 端口发布改为 `127.0.0.1:5433:5432`
+  （宿主 5432 被原生 PG 占用；回环绑定安全姿势不变），容器已重建（数据卷
+  `jarvis-os_jarvis_postgres_data` 保留，重建后数据 1/51/10/6/4 完好）。
+- `.env`（gitignored）与 `.env.example`：`DATABASE_URL` 指向
+  `127.0.0.1:5433/jarvis`。
+- 迁移：五表状态预检 0 非法 → `alembic upgrade head`
+  （0029 → 0030 → 0031）→ 验证 5 CHECK + HNSW 索引 + 数据完好。
+- 容器真库测试：`test_pg_integration` 23 + R2/R3 不变量 3 +
+  `test_growth_workflow_postgres` 1 = **27/27 通过**（PG 17.10 / pgvector 0.8.6）。
+- 全量对比（`pytest tests app/db/tests`，测试库 `jarvis_pg_test` 建于容器内）：
+  **350 passed / 1 skipped / 2 xfailed**；`check.ps1` exit 0
+  （356 passed，含 desktop companion；security、prompt 25/25、typecheck/lint 全过）。
+
+### 6.7 剩余项
+
+- `restore-backup.ps1` 的 vault 恢复路径仍仅在 dry-run 覆盖（未做破坏性实跑，
   符合设计）。
-- ⚠️ 环境提示：`jarvis-postgres` 容器数据库仍为 **0029（迁移前）** 且有更新数据
-  （10 工具执行/51 聊天消息/6 知识文档）；原生 PG 18.4（127.0.0.1:5432，应用
-  `.env` 当前指向）为 **0031 已迁移**。容器 5432 现由 Docker 代理占 0.0.0.0、
-  原生 PG 占 127.0.0.1——两套数据库并存，以哪套为正式库/是否需要把容器数据
-  迁入原生库，属部署决定，另行确认。
+- 原生 PG 18.4 保留为验证/备用环境（数据为 8/4 快照 + 0031 迁移，未接应用）。
 - 全栈复跑剩余环境门控：Ollama 语义、n8n 工作流、Windows 提醒、Edge headless。
