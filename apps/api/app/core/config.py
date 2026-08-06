@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     # router is local/read-only and never changes the existing model route.
     v2_agent_core_enabled: bool = False
     v2_router_shadow_enabled: bool = True
+    v2_router_enforcement_enabled: bool = False
+    v2_prompt_registry_enabled: bool = False
     v2_shadow_runs_enabled: bool = False
     v2_policy_enforcement_enabled: bool = False
     v2_workflow_runtime_enabled: bool = False
@@ -215,6 +217,8 @@ class Settings(BaseSettings):
             (
                 self.v2_agent_core_enabled,
                 self.v2_router_shadow_enabled,
+                self.v2_router_enforcement_enabled,
+                self.v2_prompt_registry_enabled,
                 self.v2_shadow_runs_enabled,
                 self.v2_policy_enforcement_enabled,
                 self.v2_workflow_runtime_enabled,
