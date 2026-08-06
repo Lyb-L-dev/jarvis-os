@@ -178,14 +178,28 @@ utils/              ← 任何服务可依赖（URL/哈希/规范化 单一实�
 
 ### 6.1 状态枚举统一（P2 必须完成）
 
+> **Sprint 1 已冻结（2026-08-06）**：以“不改变业务行为”为红线，CHECK/Pydantic 采用
+> **实际状态机**（代码 + schema + 测试可写值的并集），与早期简化枚举存在三处差异，
+> 差异与原因见 `docs/MIGRATION_SPRINT_1.md`。权威定义：`apps/api/app/db/enums.py`；
+> DB 约束由迁移 `20260806_0030` 落地；Pydantic 侧已对齐（schemas/tool.py、schemas/memory.py）。
+
 ```text
-AgentApproval.status: pending → approved | rejected | consumed | expired   ← DB CHECK
-Memory.status:        pending → active | rejected | deleted
-ToolExecution.status: submitted → approved | rejected | executed | failed
-AgentRun.status:      running → waiting | completed | failed | cancelled
+AgentApproval.status / ToolApproval.status:
+    pending → approved | rejected | consumed | expired                     ← DB CHECK
+Memory.status:
+    pending → active | inactive | rejected | superseded | deleted          ← DB CHECK
+ToolExecution.status:
+    created → pending_approval | executing | succeeded | failed |
+              expired | approved | rejected                                ← DB CHECK
+AgentRun.status:
+    created → running | waiting_for_input | waiting_for_sources |
+              waiting_for_model_approval | waiting_for_draft_review |
+              waiting_for_report_review | completed | rejected |
+              cancelled | failed                                           ← DB CHECK
 ```
 
-现状：`status: Mapped[str]` 无约束（C3）。迁移：Alembic + DB CHECK + Pydantic Literal + TS union 四层统一。
+现状：`status: Mapped[str]` 已收紧为 DB CHECK（C3 落地）。剩余迁移：TS union 同步
+（Sprint 4 OpenAPI 类型生成时收敛）；四层统一对账静态测试（QA，Sprint 6）。
 
 ### 6.2 事务所有权规则
 
