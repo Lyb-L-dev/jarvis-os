@@ -173,6 +173,26 @@ class AgentSpec(ContractModel):
     output_schema_ref: str = Field(min_length=1, max_length=160)
     failure_policy: FailurePolicy
 
+    @property
+    def effective_tools(self) -> tuple[str, ...]:
+        """Registry-derived tool whitelist (H5 single source view).
+
+        ``TOOL_REGISTRY.allowed_agents`` is the single source of tool<->Agent
+        authorization; this property returns the effective tool set after the
+        Agent's declared risk ceiling and confirmation scope are applied. It is
+        the runtime-consumed view (Tool Gateway cross-check) and must always
+        equal the declared ``allowed_tools`` mirror (verified by
+        ``agent_core.reconciliation``).
+        """
+
+        from app.services.agent_core.catalog import agent_effective_tools
+
+        return agent_effective_tools(
+            self.agent_id,
+            max_risk_level=self.max_risk_level,
+            confirmation_actions=self.confirmation_actions,
+        )
+
     @model_validator(mode="after")
     def validate_permissions(self) -> AgentSpec:
         prohibited = {

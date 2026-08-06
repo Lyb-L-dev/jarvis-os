@@ -1,0 +1,72 @@
+{
+  "id": "jarvisEmailDraftTestV1",
+  "name": "Jarvis Email Draft Test Account v1",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jarvis-email-draft-create",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "jarvis-email-draft-webhook",
+      "name": "Signed Ingress",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-240, 0],
+      "webhookId": "jarvis-email-draft-create-v1"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "operation": "create",
+        "sendTo": "={{ $json.body.to }}",
+        "subject": "={{ $json.body.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body.body }}",
+        "options": {}
+      },
+      "id": "jarvis-email-draft-create-node",
+      "name": "Create Test Mailbox Draft",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [-60, 0],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jarvis-test-gmail-credential",
+          "name": "Jarvis Test Gmail OAuth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'draft_created', provider: 'n8n', not_sent: true, account_alias: 'jarvis_test', draft_id: $json.id, draft: { to: $('Signed Ingress').first().json.body.to, subject: $('Signed Ingress').first().json.body.subject }, idempotent: true, credential_exposed: false } }}",
+        "options": {}
+      },
+      "id": "jarvis-email-draft-respond",
+      "name": "Return Created Draft",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [120, 0]
+    }
+  ],
+  "connections": {
+    "Signed Ingress": {
+      "main": [[{"node": "Create Test Mailbox Draft", "type": "main", "index": 0}]]
+    },
+    "Create Test Mailbox Draft": {
+      "main": [[{"node": "Return Created Draft", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  },
+  "pinData": {},
+  "versionId": "20260806-draft-v1",
+  "tags": []
+}
