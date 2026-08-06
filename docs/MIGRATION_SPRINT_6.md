@@ -74,9 +74,9 @@
    `v2_shadow_runs_enabled` 保留决定。
 2. **AgentRun 契约四层收尾**：`generated.ts` 命名联合 + Pydantic `AgentRunStatus` 导入
    （解除 2 个 strict xfail）。
-3. **PG 真库复跑**：✅ 已完成（2026-08-06，详见 §6）；剩余子项仅
-   `backup-drill.ps1` 脚本的 Docker 容器路径（本机无 Docker，已用等价手工
-   pg_dump / pg_restore 演练覆盖，见 §6）。
+3. **PG 真库复跑**：✅ 已完成（2026-08-06，详见 §6），含备份/恢复演练的
+   Docker 容器路径真跑（`backup.ps1` / `verify-backup.ps1` /
+   `backup-drill.ps1` 全部实跑通过，见 §6.5）。
 4. **n8n 测试账号工作流**：凭据就绪后按 `infra/n8n/workflows/README.md` 启用；
    补 `email.draft.create` 的 catalog `confirmation_actions`；`test_accounts_connected`
    字段（二期）。
@@ -149,10 +149,27 @@ pgvector **0.8.6**（`andreiramani/pgvector_pgsql_windows` 官方 Windows 构建
 - 手工 staging 演练（等价 `backup-drill.ps1` 的校验步骤；脚本 Docker 容器路径
   本机不可用）：`jarvis_drill_*` 临时库恢复 → 校验 **67 表 / alembic 0031 /
   ck=5 / hnsw=1 / 非法状态 0 / 数据 1-8-4** → 删除临时库，未触碰主库。
+- **Docker 容器路径真跑（2026-08-06 晚）**：Docker 管道恢复可访问后，三脚本实跑：
+  - `backup.ps1`（真实）：对 `jarvis-postgres`（pgvector/pgvector:pg17）容器执行
+    `pg_dump` → `pg_restore --list` 校验 → `docker cp` → vault 归档（29 文件，
+    `F:\obsidian\NewHub\NewHub`）→ manifest v2 + sha256；
+    产物 `backups/jarvis-20260806T091347Z-8ecc0e06.dump` +
+    `.vault.tar.gz` + `.manifest.json`。
+  - `verify-backup.ps1`（真实）：**Restore verification passed: 71 tables,
+    schema 20260804_0029**；vault 29 files 校验通过。
+  - `backup-drill.ps1`（真实）：容器内 `jarvis_drill_*` 临时库恢复 → 校验
+    **71 表 / schema 0029 / 关键表行数（memories 4、knowledge_documents 6、
+    vault_configs 1、agent_runs 7、chat_messages 51、tool_executions 10）/
+    五表状态预检 0 非法 / vault 校验和** → 临时库与容器内临时文件已清理。
 
 ### 6.6 剩余项
 
-- `backup-drill.ps1` / `restore-backup.ps1` 的 Docker 容器路径待有 Docker 环境时
-  实跑一次（本机已用等价手工演练覆盖校验逻辑）。
-- 受控恢复的正式自动化验收（脚本 + manifest 回写）同上。
+- ~~备份/恢复演练的 Docker 容器路径~~：✅ 已真跑闭环（见 §6.5）；
+  `restore-backup.ps1` 的 vault 恢复路径仍仅在 dry-run 覆盖（未做破坏性实跑，
+  符合设计）。
+- ⚠️ 环境提示：`jarvis-postgres` 容器数据库仍为 **0029（迁移前）** 且有更新数据
+  （10 工具执行/51 聊天消息/6 知识文档）；原生 PG 18.4（127.0.0.1:5432，应用
+  `.env` 当前指向）为 **0031 已迁移**。容器 5432 现由 Docker 代理占 0.0.0.0、
+  原生 PG 占 127.0.0.1——两套数据库并存，以哪套为正式库/是否需要把容器数据
+  迁入原生库，属部署决定，另行确认。
 - 全栈复跑剩余环境门控：Ollama 语义、n8n 工作流、Windows 提醒、Edge headless。

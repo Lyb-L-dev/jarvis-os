@@ -132,7 +132,7 @@ PG 支持（设 `JARVIS_TEST_POSTGRES_URL` 时 db_session/gateway_settings 切 P
 | 知识复用确认 | ✅ | test_knowledge（capture/insights/候选确认） |
 | 数据导出 | ✅ | test_data_export |
 | 自动备份 | ✅ | test_backup + verify-backup 逻辑 + backup-drill dry-run 入门禁 |
-| 受控恢复 | ⏳ | restore 演练需 Docker/PG 真库（本机不可用）；dry-run 已入门禁 |
+| 受控恢复 | ✅ | backup/verify/drill 三脚本 Docker 路径已真跑闭环（2026-08-06，71 表 / schema 0029 / vault 29 文件，详见 MIGRATION_SPRINT_6.md §6.5） |
 | 软删除与高风险确认 | ✅ | R2/R3 不变量 + 软删断言（memory/growth/investment） |
 
 ## 7. 遗留清单
