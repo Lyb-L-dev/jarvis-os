@@ -117,6 +117,19 @@ class ArchiveCandidate:
     review_relative_path: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class _PreparedArchiveItem:
+    """An archive item whose DB mutations are staged but not yet committed.
+
+    ``writes`` holds (target_path, content) vault file operations that the
+    caller decides when to apply; this lets batch archiving commit records
+    atomically before touching derived files.
+    """
+
+    outcome: ArchiveOutcome
+    writes: list[tuple[Path, bytes]]
+
+
 def _slug(value: str, fallback: str) -> str:
     cleaned = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "-", value)
     cleaned = re.sub(r"\s+", "-", cleaned).strip(" .-")
@@ -770,13 +783,19 @@ async def build_archive_source(
     return await builder(session, user_id, source_id)
 
 
-async def archive_source(
+async def _prepare_archive_item(
     session: AsyncSession,
     *,
     config: KnowledgeVaultConfig,
     source_type: str,
     source_id: uuid.UUID,
-) -> ArchiveOutcome:
+) -> _PreparedArchiveItem:
+    """Stage one archive item's DB mutations and plan its vault file writes.
+
+    This helper never commits and never writes files.  Callers own the
+    transaction: a single commit applies all staged records and logs, and
+    ``writes`` can be applied afterwards (or skipped on rollback).
+    """
     source = await build_archive_source(
         session,
         user_id=config.user_id,
@@ -807,13 +826,15 @@ async def archive_source(
         else:
             record.status = "user_modified" if target.exists() else "missing"
             result_status = "user_modified"
-        await session.commit()
-        return ArchiveOutcome(
-            source_type=source_type,
-            source_id=source_id,
-            status=result_status,
-            target_relative_path=relative_path,
-            review_relative_path=record.review_relative_path,
+        return _PreparedArchiveItem(
+            outcome=ArchiveOutcome(
+                source_type=source_type,
+                source_id=source_id,
+                status=result_status,
+                target_relative_path=relative_path,
+                review_relative_path=record.review_relative_path,
+            ),
+            writes=[],
         )
 
     rendered = _render_markdown(source, now)
@@ -824,8 +845,9 @@ async def archive_source(
         else target.exists() and current_hash == record.written_content_hash
     )
     review_relative_path: str | None = None
+    writes: list[tuple[Path, bytes]] = []
     if safe_to_write:
-        _atomic_write(target, rendered)
+        writes.append((target, rendered))
         outcome_status = "created" if record is None else "updated"
         if record is None:
             record = KnowledgeArchiveRecord(
@@ -855,7 +877,7 @@ async def archive_source(
             f"_review/{source_type}--{str(source_id)[:8]}--{stamp}.md"
         )
         review_target = _resolve_archive_path(root, review_relative_path)
-        _atomic_write(review_target, rendered)
+        writes.append((review_target, rendered))
         outcome_status = "conflict"
         if record is None:
             record = KnowledgeArchiveRecord(
@@ -892,14 +914,35 @@ async def archive_source(
             created_at=now,
         )
     )
-    await session.commit()
-    return ArchiveOutcome(
+    return _PreparedArchiveItem(
+        outcome=ArchiveOutcome(
+            source_type=source_type,
+            source_id=source_id,
+            status=outcome_status,
+            target_relative_path=relative_path,
+            review_relative_path=review_relative_path,
+        ),
+        writes=writes,
+    )
+
+
+async def archive_source(
+    session: AsyncSession,
+    *,
+    config: KnowledgeVaultConfig,
+    source_type: str,
+    source_id: uuid.UUID,
+) -> ArchiveOutcome:
+    prepared = await _prepare_archive_item(
+        session,
+        config=config,
         source_type=source_type,
         source_id=source_id,
-        status=outcome_status,
-        target_relative_path=relative_path,
-        review_relative_path=review_relative_path,
     )
+    for path, content in prepared.writes:
+        _atomic_write(path, content)
+    await session.commit()
+    return prepared.outcome
 
 
 async def archive_automatic_sources(
@@ -939,24 +982,43 @@ async def archive_automatic_sources(
         "conflict": 0,
         "errors": 0,
     }
-    for source_type, ids in (("memory", memory_ids), ("daily_brief", brief_ids)):
-        for source_id in ids:
-            try:
-                outcome = await archive_source(
+    writes: list[tuple[Path, bytes]] = []
+    total = len(memory_ids) + len(brief_ids)
+    try:
+        # 单事务批处理：全部归档记录与同步日志一次提交，
+        # 任一项失败即整批回滚，不再逐条 commit + 继续。
+        for source_type, ids in (("memory", memory_ids), ("daily_brief", brief_ids)):
+            for source_id in ids:
+                prepared = await _prepare_archive_item(
                     session,
                     config=config,
                     source_type=source_type,
                     source_id=source_id,
                 )
-                counts[outcome.status] += 1
-            except Exception:
-                await session.rollback()
-                counts["errors"] += 1
+                counts[prepared.outcome.status] += 1
+                writes.extend(prepared.writes)
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        # 整批失败：无任何归档记录/日志落库，errors 记为全部候选项。
+        return ArchiveBatchResult(
+            processed=total,
+            created=0,
+            updated=0,
+            unchanged=0,
+            user_modified=0,
+            conflicts=0,
+            errors=total,
+        )
+    # DB 提交成功后统一落盘派生产物；文件为可重建派生数据，
+    # 若个别写入失败由下一次扫描/归档按 hash 不一致自动修复。
+    for path, content in writes:
+        _atomic_write(path, content)
     changed = counts["created"] + counts["updated"] + counts["conflict"]
     if changed:
         await scan_vault(session, config=config)
     return ArchiveBatchResult(
-        processed=len(memory_ids) + len(brief_ids),
+        processed=total,
         created=counts["created"],
         updated=counts["updated"],
         unchanged=counts["unchanged"],

@@ -7,6 +7,7 @@ import os
 import re
 import threading
 import uuid
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -221,9 +222,7 @@ def _postgres_connection_string(settings: Settings) -> str:
     return url.set(drivername="postgresql").render_as_string(hide_password=False)
 
 
-_MEM0_LOCK = threading.RLock()
-_MEM0_CLIENT: object | None = None
-_MEM0_CLIENT_SIGNATURE: tuple[str, ...] | None = None
+_MEM0_CREATION_LOCK = threading.Lock()
 
 
 def _history_path(settings: Settings) -> Path:
@@ -233,9 +232,16 @@ def _history_path(settings: Settings) -> Path:
     return path.resolve()
 
 
-def _create_or_get_mem0_client(settings: Settings) -> object:
-    global _MEM0_CLIENT, _MEM0_CLIENT_SIGNATURE
+def _close_mem0_client(client: object) -> None:
+    close = getattr(client, "close", None)
+    if callable(close):
+        with suppress(Exception):
+            # 关闭失败不应掩盖候选提取结果；实例随 GC 释放。
+            close()
 
+
+def _build_mem0_client(settings: Settings) -> object:
+    """Create one fresh Mem0 client with the enforced local-only configuration."""
     collection = settings.mem0_shadow_collection_name
     if not MEM0_COLLECTION_PATTERN.fullmatch(collection):
         raise MemoryEngineUnavailable("Mem0 collection name is outside the safe allowlist")
@@ -244,20 +250,10 @@ def _create_or_get_mem0_client(settings: Settings) -> object:
     history_path = _history_path(settings)
     mem0_dir = PROJECT_ROOT / ".data" / "mem0"
     mem0_dir.mkdir(parents=True, exist_ok=True)
-    os.environ["MEM0_TELEMETRY"] = "false"
-    os.environ["MEM0_DIR"] = str(mem0_dir.resolve())
-    signature = (
-        connection_string,
-        collection,
-        root_url,
-        settings.mem0_shadow_llm_model,
-        settings.semantic_embedding_model,
-        str(settings.semantic_embedding_dimensions),
-        str(history_path),
-    )
-    with _MEM0_LOCK:
-        if _MEM0_CLIENT is not None and signature == _MEM0_CLIENT_SIGNATURE:
-            return _MEM0_CLIENT
+    with _MEM0_CREATION_LOCK:
+        # SDK 在 import 时读取这两个环境变量；每次独立会话前固定本地目录与遥测开关。
+        os.environ["MEM0_TELEMETRY"] = "false"
+        os.environ["MEM0_DIR"] = str(mem0_dir.resolve())
         try:
             from mem0 import Memory as Mem0Memory
         except ImportError as exc:
@@ -306,20 +302,24 @@ def _create_or_get_mem0_client(settings: Settings) -> object:
             or getattr(getattr(config, "vector_store", None), "provider", None)
             != "pgvector"
         ):
+            _close_mem0_client(client)
             raise MemoryEngineUnavailable("Mem0 refused the enforced local-only configuration")
-        _MEM0_CLIENT = client
-        _MEM0_CLIENT_SIGNATURE = signature
         return client
 
 
-def _run_mem0(
+def _run_mem0_session(
     settings: Settings,
     text: str,
     shadow_run_id: uuid.UUID,
     source_attribution: str,
 ) -> list[EngineCandidate]:
-    with _MEM0_LOCK:
-        client = _create_or_get_mem0_client(settings)
+    """Run one independent Mem0 session inside the worker thread.
+
+    The client is created, used, and closed here so no long-lived singleton
+    crosses the asyncio/thread boundary (M6).
+    """
+    client = _build_mem0_client(settings)
+    try:
         result = client.add(  # type: ignore[attr-defined]
             [{"role": "user", "content": text[:8_000]}],
             user_id=f"jarvis-shadow-{shadow_run_id}",
@@ -330,6 +330,8 @@ def _run_mem0(
             infer=True,
             prompt=MEM0_CUSTOM_INSTRUCTIONS,
         )
+    finally:
+        _close_mem0_client(client)
     raw_items = result.get("results", []) if isinstance(result, dict) else []
     candidates: list[EngineCandidate] = []
     for item in raw_items[:4]:
@@ -378,7 +380,7 @@ class Mem0MemoryEngine:
                 "Required local models are not installed; automatic download is disabled"
             )
         return await asyncio.to_thread(
-            _run_mem0,
+            _run_mem0_session,
             settings,
             text,
             shadow_run_id,
