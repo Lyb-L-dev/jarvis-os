@@ -69,7 +69,12 @@ async function main() {
       timeout: 30_000,
     });
     const conversationCount = await page.locator(".conversation-item").count();
-    await page.getByRole("button", { name: "新建对话" }).click();
+    // Sprint 4 ruling: the chat "new conversation" button text is "新的对话"
+    // (the acceptance script was stale). Keep a fallback for older builds.
+    const newConversation = page
+      .getByRole("button", { name: "新的对话" })
+      .or(page.getByRole("button", { name: "新建对话" }));
+    await newConversation.first().click();
     await page.waitForFunction(
       (count) => document.querySelectorAll(".conversation-item").length > count,
       conversationCount,

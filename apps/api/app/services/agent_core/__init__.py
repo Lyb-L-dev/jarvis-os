@@ -1,4 +1,14 @@
-from app.services.agent_core.catalog import AGENT_SPECS, get_agent_spec
+from app.services.agent_core.catalog import (
+    AGENT_SPECS,
+    agent_effective_tools,
+    effective_tools_for_spec,
+    get_agent_spec,
+)
+from app.services.agent_core.consistency import (
+    ShadowConsistencyResult,
+    check_shadow_consistency,
+    router_enforcement_enabled,
+)
 from app.services.agent_core.contracts import (
     ActionKind,
     AgentId,
@@ -47,14 +57,18 @@ from app.services.agent_core.routing import (
 )
 from app.services.agent_core.runtime import (
     AgentRuntime,
+    DirectRuntime,
     RuntimeEvent,
     RuntimeRegistry,
     RuntimeRequest,
     RuntimeUnavailableError,
+    WorkflowRuntime,
+    build_runtime_registry,
 )
 
 __all__ = [
     "AGENT_SPECS",
+    "agent_effective_tools",
     "ActionKind",
     "ActionPolicy",
     "AgentId",
@@ -71,6 +85,7 @@ __all__ = [
     "DataCategory",
     "DataReference",
     "DeepSeekDisclosure",
+    "DirectRuntime",
     "FailurePolicy",
     "MemorySpace",
     "ModelCapability",
@@ -95,9 +110,15 @@ __all__ = [
     "RuntimeRequest",
     "RuntimeUnavailableError",
     "RuntimeSelector",
+    "ShadowConsistencyResult",
     "StepKind",
     "StepStatus",
+    "WorkflowRuntime",
+    "build_runtime_registry",
+    "effective_tools_for_spec",
+    "check_shadow_consistency",
     "get_agent_spec",
+    "router_enforcement_enabled",
     "build_default_registry",
     "IntentDecision",
     "IntentRouter",

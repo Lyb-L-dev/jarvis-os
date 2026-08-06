@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Integer,
@@ -19,10 +20,17 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.db.enums import MemoryStatusValues, check_sql
 
 
 class Memory(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "memories"
+    __table_args__ = (
+        CheckConstraint(
+            check_sql("status", MemoryStatusValues),
+            name="status",
+        ),
+    )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),

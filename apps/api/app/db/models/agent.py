@@ -4,14 +4,30 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, UniqueConstraint, Uuid
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.db.enums import AgentApprovalStatusValues, AgentRunStatusValues, check_sql
 
 
 class AgentRunRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "agent_runs"
+    __table_args__ = (
+        CheckConstraint(
+            check_sql("status", AgentRunStatusValues),
+            name="status",
+        ),
+    )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
@@ -82,6 +98,12 @@ class AgentRunStepRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class AgentApprovalRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "agent_approvals"
+    __table_args__ = (
+        CheckConstraint(
+            check_sql("status", AgentApprovalStatusValues),
+            name="status",
+        ),
+    )
 
     run_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),

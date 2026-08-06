@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from pydantic import Field
 
+from app.db.enums import MemoryStatus
 from app.schemas.common import APIModel
 
 MemoryType = Literal[
@@ -18,16 +19,6 @@ MemoryType = Literal[
     "investment",
     "conversation_summary",
 ]
-MemoryStatus = Literal[
-    "pending",
-    "active",
-    "inactive",
-    "rejected",
-    "superseded",
-    "deleted",
-]
-
-
 class MemoryCreate(APIModel):
     memory_type: MemoryType
     content: str = Field(min_length=1, max_length=4_000)

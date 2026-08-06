@@ -7,31 +7,37 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import Settings
 from app.db.models import (
     AgentRunRecord,
+    AgentRunStepRecord,
     ToolApprovalRecord,
     ToolExecutionEventRecord,
     ToolExecutionRecord,
     User,
 )
-from app.services.agent_core.catalog import get_agent_spec
+from app.services.agent_core.catalog import effective_tools_for_spec, get_agent_spec
 from app.services.agent_core.contracts import (
     AgentId,
     PolicyDisposition,
     RiskLevel,
 )
-from app.services.agent_core.policy import RiskPolicy
+from app.services.agent_core.policy import (
+    RiskPolicy,
+    policy_enforcement_enabled,
+    policy_step_refs,
+)
 from app.services.memory import contains_sensitive_memory
 from app.services.tool_catalog import (
     PERMANENTLY_BLOCKED_ACTIONS,
     TOOL_REGISTRY,
     ToolCatalogError,
     ToolDefinition,
+    ToolExecutionContext,
 )
 
 RISK_RANK = {
@@ -94,7 +100,10 @@ def _validate_definition_for_agent(
     except ValueError as exc:
         raise ToolGatewayError("unknown_agent", "Unknown Agent identity", 422) from exc
     spec = get_agent_spec(resolved_agent)
-    if definition.tool_id not in spec.allowed_tools:
+    # Runtime consumption of the registry-derived single source (H5):
+    # ToolRegistry.allowed_agents decides grants; the AgentSpec contributes
+    # only the risk ceiling and confirmation scope via the derived view.
+    if definition.tool_id not in effective_tools_for_spec(spec):
         raise ToolGatewayError(
             "tool_not_allowed_for_agent",
             "The selected Agent is not allowed to request this tool",
@@ -318,7 +327,11 @@ async def _execute_record(
     await session.commit()
 
     try:
-        result = await definition.handler(validated, settings)
+        result = await definition.handler(
+            validated,
+            settings,
+            ToolExecutionContext(execution_id=execution.id),
+        )
     except Exception as exc:
         execution.status = "failed"
         execution.completed_at = datetime.now(UTC)
@@ -484,6 +497,37 @@ async def submit_tool(
             },
         )
     )
+
+    # Policy audit wiring (MIGRATION_SPRINT_2_AI_HANDOFF.md §5): record the
+    # R0-R3 decision as an AgentRunStep when the enforcement flag is on.
+    # Audit-only; R2/R3 execution semantics are unchanged. The step key is
+    # execution-scoped so it never collides with the workflow-level
+    # "policy_gate" step or with repeated tool submissions in one run.
+    if (
+        policy_enforcement_enabled(settings)
+        and agent_run_id is not None
+    ):
+        max_sequence = (
+            await session.scalar(
+                select(func.max(AgentRunStepRecord.sequence)).where(
+                    AgentRunStepRecord.run_id == agent_run_id
+                )
+            )
+            or 0
+        )
+        session.add(
+            AgentRunStepRecord(
+                run_id=agent_run_id,
+                sequence=int(max_sequence) + 1,
+                step_key=f"policy_gate:{definition.tool_id}:{execution.id}",
+                kind="policy",
+                status="completed",
+                input_refs=[{"kind": "tool_execution", "ref_id": str(execution.id)}],
+                output_refs=policy_step_refs(policy),
+                started_at=datetime.now(UTC),
+                completed_at=datetime.now(UTC),
+            )
+        )
 
     if policy.disposition is PolicyDisposition.REQUIRE_CONFIRMATION:
         if not settings.v2_approval_center_enabled:

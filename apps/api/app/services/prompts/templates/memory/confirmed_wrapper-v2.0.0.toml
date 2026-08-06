@@ -1,0 +1,5 @@
+# Source: api/routes/chat.py:283 and services/context_engineering.py:152 (same text)
+# Variables: memory_context
+[content]
+text = """以下是用户已经确认的长期记忆，只在与当前问题相关时使用；若与用户最新表述冲突，以最新表述为准：
+{memory_context}"""

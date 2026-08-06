@@ -1,0 +1,3 @@
+# Source: app/services/conversation_summary.py refresh_long_conversation_summary (verbatim, one line)
+[content]
+text = """你负责压缩长期对话。只保留稳定事实、用户偏好、目标、决定、未完成事项、重要数字和后续约定；删除寒暄、重复内容和临时措辞。使用简洁中文分点，不超过600字，不要编造。"""

@@ -2,7 +2,20 @@
 
 Jarvis OS 是一个本地优先、桌面优先的个人 AI 成长操作系统。它把目标、任务、英语、情报、投资记录、长期记忆和主动提醒连接成一个持续运行的个人闭环。
 
-当前阶段：**Sprint 37 受控 Computer-use（只读查看 + 计划与预览）已完成，下一阶段为确认后修改（阶段 3）**
+当前阶段：**Sprint 37 基线已完成；迁移路线图 Sprint 0-6（2026-08-06）全部交付并合入 `dev`。
+Computer-use 阶段 3 已启用（沙箱确认后修改，R2 预览-批准-执行）**
+
+## 迁移路线图交付记录（2026-08-06）
+
+- [Sprint 1 后端架构治理](docs/MIGRATION_SPRINT_1.md) —— Repository/UoW、状态枚举 CHECK、checkpointer 下沉、测试基线
+- [Sprint 2 AI 能力落地](docs/MIGRATION_SPRINT_2.md) —— Prompt 注册表（24 模板）、Router 阶段 1/2、workflow 走 AgentSpec、M2 统一路由
+- [Sprint 3 记忆与知识深化](docs/MIGRATION_SPRINT_3.md) —— HNSW ANN 迁移 0031、归档原子化、Mem0 去单例、备份 vault + 恢复演练
+- [Sprint 4 前端渐进重构](docs/MIGRATION_SPRINT_4.md) —— api.ts 拆 17 领域模块 + 类型生成、四巨型组件拆分、视觉基线
+- [Sprint 5 工具与自动化](docs/MIGRATION_SPRINT_5.md) —— Computer-use 阶段 3、AgentSpec 白名单单一来源、n8n 测试账号工作流
+- [Sprint 6 收尾与验收](docs/MIGRATION_SPRINT_6.md) —— 契约四层对账、全量回归、发布验收表
+
+分支约定：`main` = 发布基线；`dev` = 集成分支（Sprint 1-6 已并入）。迁移遗留项见
+`docs/MIGRATION_SPRINT_6.md §5`（发布后待办）。
 
 ## 当前已具备
 

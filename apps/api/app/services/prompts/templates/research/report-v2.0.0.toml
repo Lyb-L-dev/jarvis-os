@@ -1,0 +1,13 @@
+# Source: app/services/research_workflow.py _research_prompt (user template)
+# Variables: question, scope, research_plan, source_blocks, schema_json
+[content]
+text = """研究问题：{question}
+研究范围：{scope}
+研究计划：{research_plan}
+
+可使用的全部来源如下。不得创建其他引用：
+
+{source_blocks}
+
+每条事实和观点至少带一个 source_refs；推断使用 basis_refs。如果来源冲突，在观点或不确定性中说明。只输出以下结构 JSON：
+{schema_json}"""

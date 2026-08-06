@@ -1,0 +1,128 @@
+{
+  "created_at": "2026-08-06T06:20:52.044Z",
+  "base_url": "http://127.0.0.1:3000",
+  "api_url": "http://127.0.0.1:8000/api/v1",
+  "viewport": "1440x900",
+  "entries": [
+    {
+      "file": "investment\\01-loading-or-initial.png",
+      "page": "investment",
+      "label": "1. 加载屏/初始态（尽力）",
+      "sha256": "ccaacb67c51160074599ecc2a0d5c05a33c42bf39c224d8049cb6dd64d6ea550"
+    },
+    {
+      "file": "investment\\16a-tab-positions.png",
+      "page": "investment",
+      "label": "16. Tab-持仓",
+      "sha256": "112595aeb62fdd11b3c5fac5c829586e3ffd67fb6ffaa65582c970eaedd12a0a"
+    },
+    {
+      "file": "investment\\16b-tab-transactions.png",
+      "page": "investment",
+      "label": "16. Tab-交易",
+      "sha256": "8c72359e98f97bec7b41f2cfc78012dbf2d66566e01dd5b3da8c311c9ea1e3b3"
+    },
+    {
+      "file": "investment\\16c-tab-theses.png",
+      "page": "investment",
+      "label": "16. Tab-理由",
+      "sha256": "318f24197f544ad1022e2efc4031b8b5366a6678bd479b4d0a569ddb1bbd4836"
+    },
+    {
+      "file": "investment\\16d-tab-news.png",
+      "page": "investment",
+      "label": "16. Tab-新闻",
+      "sha256": "9d36d700e330c50ddbce23fab33b1cbffd4bedd5068fe6e5eff43ec631afc22d"
+    },
+    {
+      "file": "investment\\16e-tab-reviews.png",
+      "page": "investment",
+      "label": "16. Tab-复盘",
+      "sha256": "6d4ef4a1feb182a3ba28bb6d31df205631c6f8e7fde9089428ca4549b177c489"
+    },
+    {
+      "file": "investment\\06-asset-form-edit.png",
+      "page": "investment",
+      "label": "6. 资产表单-编辑（币种禁用）",
+      "sha256": "be76a030990864d1c956b3b38d29b6cd520bea54eacc67af869f5c14cfeb38e6"
+    },
+    {
+      "file": "investment\\05-asset-form-new.png",
+      "page": "investment",
+      "label": "5. 资产表单-新建（含初始持仓区）",
+      "sha256": "8ef4289e2b04da99fb51046ddb7c9500cd0a77d9346759ee86cb6bf7fdf1b9ae"
+    },
+    {
+      "file": "investment\\07-tx-form-buy.png",
+      "page": "investment",
+      "label": "7. 交易表单-买入",
+      "sha256": "dad5f0b48d0a5a86880ebb7d48b79fc84dd44a33054f6ff946fbb3952cc7cd7d"
+    },
+    {
+      "file": "investment\\09-thesis-form.png",
+      "page": "investment",
+      "label": "9. 理由表单",
+      "sha256": "cc5f63c9630f7c813478a140bf4fd8f5e7bd347119ca7b38e5f396b530578872"
+    },
+    {
+      "file": "english\\01-tab-practice.png",
+      "page": "english",
+      "label": "English-对话训练Tab",
+      "sha256": "7ff8276834d7a5bc05af01a454eb8a6637aed0555297959fc6ad254553a0cf72"
+    },
+    {
+      "file": "english\\02-tab-mistakes.png",
+      "page": "english",
+      "label": "English-错题本Tab",
+      "sha256": "f12c4372b011b9a84e750678477bbd2d878fc57e2708790214a00fd4f8ea7f2f"
+    },
+    {
+      "file": "english\\03-tab-review.png",
+      "page": "english",
+      "label": "English-今日复习Tab",
+      "sha256": "7b45799b0917f3f1e6f56a99292d48a3e47777dd024b79b1394cf1ff0324f363"
+    },
+    {
+      "file": "english\\04-session-setup-form.png",
+      "page": "english",
+      "label": "English-会话设置表单",
+      "sha256": "ff413b2804e121301f0eda28aaf8fe9eaf198639beebd8a3e7ea99a7b1809d35"
+    },
+    {
+      "file": "chat\\01-workspace-empty.png",
+      "page": "chat",
+      "label": "Chat-工作区（空态）",
+      "sha256": "0f50283a133de8a8f6973ad11f3440ef2d8c01187a9cffbe5ca68d27c2794832"
+    },
+    {
+      "file": "chat\\03-composer-state.png",
+      "page": "chat",
+      "label": "Chat-输入区（Composer）",
+      "sha256": "b5d1a680d747acb6e765b6e055fe0126fb1209cc591f0e937e762cf6a5ad15a3"
+    },
+    {
+      "file": "growth\\01-tab-today-empty.png",
+      "page": "growth",
+      "label": "Growth-今日Tab（空态）",
+      "sha256": "fa350354889faf274eb371d6508997cf20da9110844edacec45bd315a576d7ce"
+    },
+    {
+      "file": "growth\\02-tab-goals-empty.png",
+      "page": "growth",
+      "label": "Growth-目标Tab（空态）",
+      "sha256": "0df52525d38760dcc9597029090a8c3ae7807252cd0262e0baffaa7d0fded5bf"
+    },
+    {
+      "file": "growth\\03-tab-review-empty.png",
+      "page": "growth",
+      "label": "Growth-复盘Tab（空态）",
+      "sha256": "00edc5e0cde0ef04be1fbb4a1c524c0a23de243d963e85efdd2b3276ea570a8c"
+    },
+    {
+      "file": "growth\\04-task-form.png",
+      "page": "growth",
+      "label": "Growth-任务表单",
+      "sha256": "e833eb9e5853fddd7057f7d912210eef4b92bf5d3f63e7c49099ef071febb0cc"
+    }
+  ]
+}

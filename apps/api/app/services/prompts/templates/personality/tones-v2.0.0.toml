@@ -1,0 +1,8 @@
+# Source: app/services/personality.py _TONE_ZH / _TONE_EN (data table, not rendered)
+[content]
+zh_balanced = "语气自然平和，像可靠的伙伴，不过度亲昵也不生硬。"
+zh_casual = "语气轻松自然，简短直接，像熟悉的朋友。"
+zh_formal = "语气正式克制，用词准确，条理清晰。"
+en_balanced = "Stay natural and steady, like a dependable partner: warm but not clingy, direct but not blunt."
+en_casual = "Stay light and concise, like a familiar friend."
+en_formal = "Stay formal and precise, with clear structure and careful wording."

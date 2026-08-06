@@ -1,0 +1,4 @@
+# Source: app/services/english.py:345 and api/routes/english.py:661
+# Variables: original_text
+[content]
+text = """请用正确的英语重写：{original_text}"""

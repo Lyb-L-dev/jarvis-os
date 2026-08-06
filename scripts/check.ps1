@@ -29,12 +29,15 @@ Assert-LastCommand "Backend lint"
     --basetemp $PytestTempDirectory `
     -o "cache_dir=$PytestCacheDirectory" `
     (Join-Path $ProjectRoot "apps\api\tests") `
+    (Join-Path $ProjectRoot "apps\api\app\db\tests") `
     (Join-Path $ProjectRoot "apps\desktop\tests")
 Assert-LastCommand "Backend tests"
 
 & (Join-Path $ProjectRoot "scripts\security-check.ps1")
 & $PythonPath (Join-Path $ProjectRoot "scripts\evaluate-prompts.py")
 Assert-LastCommand "Prompt and policy evaluation"
+& (Join-Path $ProjectRoot "scripts\backup-drill.ps1") -DryRun
+Assert-LastCommand "Backup drill dry-run"
 
 Push-Location (Join-Path $ProjectRoot "apps\web")
 try {

@@ -51,7 +51,9 @@ from app.services.agent_core import (
     ModelPreference,
     RouteRequest,
     RouterV2,
+    ShadowConsistencyResult,
     build_default_registry,
+    check_shadow_consistency,
 )
 from app.services.context_engineering import assemble_chat_context
 from app.services.conversation_summary import (
@@ -93,6 +95,7 @@ class PreparedChatCall:
     route: ResolvedRoute
     model_messages: list[ChatMessage]
     agent_routing: AgentRouteDecision | None = None
+    shadow_consistency: ShadowConsistencyResult | None = None
     paid_call_confirmed: bool = False
     memory_candidates_created: int = 0
     knowledge_sources: list[KnowledgeReference] | None = None
@@ -355,6 +358,13 @@ async def prepare_chat_call(
         route,
         confirmed=payload.paid_call_confirmed,
     )
+    shadow_consistency = check_shadow_consistency(
+        agent_routing,
+        real_provider=route.provider_used,
+        real_model=route.model_used,
+        real_reason=route.route_reason,
+        enabled=getattr(settings, "v2_router_enforcement_enabled", False),
+    )
 
     conversation.model_mode = selected_mode.value
     conversation.last_message_at = datetime.now(UTC)
@@ -417,6 +427,7 @@ async def prepare_chat_call(
         route=route,
         model_messages=assembled.messages,
         agent_routing=agent_routing,
+        shadow_consistency=shadow_consistency,
         paid_call_confirmed=(
             route.provider_used == "deepseek" and payload.paid_call_confirmed
         ),
@@ -474,6 +485,13 @@ async def prepare_regeneration(
         route,
         confirmed=payload.paid_call_confirmed,
     )
+    shadow_consistency = check_shadow_consistency(
+        agent_routing,
+        real_provider=route.provider_used,
+        real_model=route.model_used,
+        real_reason=route.route_reason,
+        enabled=getattr(settings, "v2_router_enforcement_enabled", False),
+    )
 
     conversation.model_mode = selected_mode.value
     conversation.last_message_at = datetime.now(UTC)
@@ -506,6 +524,7 @@ async def prepare_regeneration(
         route=route,
         model_messages=assembled.messages,
         agent_routing=agent_routing,
+        shadow_consistency=shadow_consistency,
         paid_call_confirmed=(
             route.provider_used == "deepseek" and payload.paid_call_confirmed
         ),
@@ -549,6 +568,11 @@ async def persist_assistant_result(
             "agent_routing": (
                 prepared.agent_routing.model_dump(mode="json")
                 if prepared.agent_routing
+                else None
+            ),
+            "shadow_consistency": (
+                prepared.shadow_consistency.to_metadata()
+                if prepared.shadow_consistency
                 else None
             ),
             **(

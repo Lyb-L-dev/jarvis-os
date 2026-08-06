@@ -10,8 +10,12 @@ from app.db.models import ChatConversation, ModelCallLog, User
 from app.db.models import ChatMessage as StoredChatMessage
 from app.services.model_gateway import (
     ChatMessage,
+    ModelMode,
+    ModelRouter,
     ResolvedRoute,
+    RoutingContext,
     execute_model_call,
+    resolve_route,
 )
 
 SUMMARY_TRIGGER_MESSAGES = 20
@@ -79,11 +83,17 @@ async def refresh_long_conversation_summary(
         transcript = f"已有摘要：\n{conversation.summary}\n\n新增对话：\n{transcript}"
     transcript = transcript[-SUMMARY_MAX_SOURCE_CHARS:]
 
+    resolved = resolve_route(
+        settings,
+        ModelRouter(settings).route(RoutingContext(mode=ModelMode.LOCAL)),
+    )
+    # 后台任务只走本地模型（ModelRouter 决定），绝不静默调用 DeepSeek。
     route = ResolvedRoute(
-        requested_provider="ollama",
-        provider_used="ollama",
-        model_used=settings.ollama_model,
+        requested_provider=resolved.requested_provider,
+        provider_used=resolved.provider_used,
+        model_used=resolved.model_used,
         route_reason="long_conversation_summary",
+        fallback_reason=resolved.fallback_reason,
     )
     summary_messages = [
         ChatMessage(
@@ -118,9 +128,9 @@ async def refresh_long_conversation_summary(
             conversation_id=conversation.id,
             assistant_message_id=None,
             requested_mode="local",
-            requested_provider="ollama",
-            provider_used="ollama",
-            model_used=settings.ollama_model,
+            requested_provider=route.requested_provider,
+            provider_used=route.provider_used,
+            model_used=route.model_used,
             route_reason="long_conversation_summary",
             fallback_reason=None,
             user_confirmed=False,

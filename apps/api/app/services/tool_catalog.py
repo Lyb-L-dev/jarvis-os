@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import ipaddress
+import json
 import os
 import tempfile
 import uuid
@@ -45,6 +46,10 @@ class WorkspaceFileWriteInput(ToolInputModel):
     overwrite: bool = False
 
 
+class WorkspaceFileRestoreInput(ToolInputModel):
+    execution_id: uuid.UUID
+
+
 class ComputerScreenInfoInput(ToolInputModel):
     include_windows: bool = True
 
@@ -54,11 +59,18 @@ class WorkspaceFileReadInput(ToolInputModel):
 
 
 class CalendarEventInput(ToolInputModel):
+    account_alias: str = Field(default="jarvis_test", pattern=r"^jarvis_test$")
     title: str = Field(min_length=1, max_length=200)
     starts_at: datetime
     ends_at: datetime
     timezone: str = Field(default="Asia/Shanghai", min_length=1, max_length=80)
     notes: str = Field(default="", max_length=4_000)
+
+    @model_validator(mode="after")
+    def validate_window(self) -> CalendarEventInput:
+        if self.ends_at <= self.starts_at:
+            raise ValueError("ends_at must be after starts_at")
+        return self
 
 
 class EmailActionInput(ToolInputModel):
@@ -99,6 +111,17 @@ class CalendarEventsReadInput(ToolInputModel):
 
 class EmailDraftPrepareInput(ToolInputModel):
     account_alias: str = Field(default="jarvis_sandbox", pattern=r"^jarvis_sandbox$")
+    to: str = Field(
+        min_length=3,
+        max_length=320,
+        pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$",
+    )
+    subject: str = Field(min_length=1, max_length=300)
+    body: str = Field(min_length=1, max_length=20_000)
+
+
+class EmailDraftCreateInput(ToolInputModel):
+    account_alias: str = Field(default="jarvis_test", pattern=r"^jarvis_test$")
     to: str = Field(
         min_length=3,
         max_length=320,
@@ -180,7 +203,17 @@ class ToolHandlerResult:
     side_effect_proof: dict[str, Any] | None = None
 
 
-ToolHandler = Callable[[BaseModel, Settings], Awaitable[ToolHandlerResult]]
+@dataclass(frozen=True, slots=True)
+class ToolExecutionContext:
+    """Execution-scoped context passed to tool handlers by the Tool Gateway."""
+
+    execution_id: uuid.UUID
+
+
+ToolHandler = Callable[
+    [BaseModel, Settings, ToolExecutionContext | None],
+    Awaitable[ToolHandlerResult],
+]
 PreviewBuilder = Callable[[BaseModel, Settings], dict[str, Any]]
 
 
@@ -247,6 +280,21 @@ def _workspace_root(settings: Settings) -> Path:
     return root.resolve()
 
 
+def _backup_root(settings: Settings) -> Path:
+    return _workspace_root(settings) / ".backups"
+
+
+def _backup_dir(settings: Settings, execution_id: uuid.UUID) -> Path:
+    return _backup_root(settings) / str(execution_id)
+
+
+def _require_stage_three(settings: Settings) -> None:
+    if settings.computer_use_stage < 3:
+        raise ToolCatalogError(
+            "Computer-use stage 3 (confirmed sandbox writes) is not enabled"
+        )
+
+
 def resolve_workspace_target(
     payload: WorkspaceFileWriteInput,
     settings: Settings,
@@ -258,6 +306,8 @@ def resolve_workspace_target(
     target = (root / relative).resolve()
     if not target.is_relative_to(root):
         raise ToolCatalogError("File path escaped the Jarvis tool sandbox")
+    if target.is_relative_to(_backup_root(settings)):
+        raise ToolCatalogError("The .backups directory is not writable by tools")
     if target.suffix.casefold() not in {".md", ".txt", ".json"}:
         raise ToolCatalogError("Only .md, .txt, and .json files are allowed")
     if len(payload.content) > settings.tool_file_max_chars:
@@ -278,6 +328,7 @@ def _file_hash(path: Path) -> str:
 
 
 def workspace_file_preview(model: BaseModel, settings: Settings) -> dict[str, Any]:
+    _require_stage_three(settings)
     payload = WorkspaceFileWriteInput.model_validate(model.model_dump())
     root, target = resolve_workspace_target(payload, settings)
     exists = target.exists()
@@ -293,6 +344,11 @@ def workspace_file_preview(model: BaseModel, settings: Settings) -> dict[str, An
         "size_bytes": len(encoded),
         "content_preview": payload.content[:4_000],
         "preview_truncated": len(payload.content) > 4_000,
+        "rollback": {
+            "retains_original": exists,
+            "restore_available_after_execution": exists,
+            "restore_target_sha256": before_hash,
+        },
         "warning": "This file write requires a separate approval and execution step.",
     }
 
@@ -317,6 +373,7 @@ def unavailable_preview(model: BaseModel, _: Settings) -> dict[str, Any]:
 async def handle_system_status(
     model: BaseModel,
     settings: Settings,
+    _context: ToolExecutionContext | None = None,
 ) -> ToolHandlerResult:
     payload = SystemStatusInput.model_validate(model.model_dump())
     output: dict[str, Any] = {
@@ -336,7 +393,11 @@ async def handle_system_status(
     return ToolHandlerResult(output=output)
 
 
-async def handle_text_draft(model: BaseModel, _: Settings) -> ToolHandlerResult:
+async def handle_text_draft(
+    model: BaseModel,
+    _: Settings,
+    _context: ToolExecutionContext | None = None,
+) -> ToolHandlerResult:
     payload = TextDraftInput.model_validate(model.model_dump())
     return ToolHandlerResult(
         output={
@@ -349,7 +410,11 @@ async def handle_text_draft(model: BaseModel, _: Settings) -> ToolHandlerResult:
     )
 
 
-async def handle_n8n_status(model: BaseModel, settings: Settings) -> ToolHandlerResult:
+async def handle_n8n_status(
+    model: BaseModel,
+    settings: Settings,
+    _context: ToolExecutionContext | None = None,
+) -> ToolHandlerResult:
     payload = N8nProviderStatusInput.model_validate(model.model_dump())
     result = await n8n_provider.n8n_provider_status(settings)
     if not payload.include_workflows:
@@ -360,6 +425,7 @@ async def handle_n8n_status(model: BaseModel, settings: Settings) -> ToolHandler
 async def handle_calendar_read(
     model: BaseModel,
     settings: Settings,
+    _context: ToolExecutionContext | None = None,
 ) -> ToolHandlerResult:
     payload = CalendarEventsReadInput.model_validate(model.model_dump())
     result = await n8n_provider.call_n8n_provider(
@@ -390,6 +456,7 @@ async def handle_calendar_read(
 async def handle_email_draft(
     model: BaseModel,
     settings: Settings,
+    _context: ToolExecutionContext | None = None,
 ) -> ToolHandlerResult:
     payload = EmailDraftPrepareInput.model_validate(model.model_dump())
     result = await n8n_provider.call_n8n_provider(
@@ -422,9 +489,113 @@ async def handle_email_draft(
     )
 
 
+def calendar_event_upsert_preview(model: BaseModel, _: Settings) -> dict[str, Any]:
+    payload = CalendarEventInput.model_validate(model.model_dump())
+    return {
+        "operation": "calendar_event_create",
+        "account_alias": payload.account_alias,
+        "title": payload.title,
+        "starts_at": payload.starts_at.isoformat(),
+        "ends_at": payload.ends_at.isoformat(),
+        "timezone": payload.timezone,
+        "notes_preview": payload.notes[:200],
+        "warning": "写入测试日历账号，需单独批准后执行；不会触碰真实账号。",
+    }
+
+
+async def handle_calendar_event_upsert(
+    model: BaseModel,
+    settings: Settings,
+    _context: ToolExecutionContext | None = None,
+) -> ToolHandlerResult:
+    payload = CalendarEventInput.model_validate(model.model_dump())
+    result = await n8n_provider.call_n8n_provider(
+        settings,
+        path="/v1/calendar/write",
+        payload=payload.model_dump(mode="json"),
+    )
+    if (
+        result.get("status") != "completed"
+        or result.get("account_alias") != "jarvis_test"
+        or result.get("credential_exposed") is not False
+        or not isinstance(result.get("event_id"), str)
+        or not result.get("event_id")
+    ):
+        raise ToolCatalogError("n8n calendar write workflow returned an invalid envelope")
+    return ToolHandlerResult(
+        output={
+            "status": "completed",
+            "account_alias": "jarvis_test",
+            "event_id": result["event_id"],
+            "credential_exposed": False,
+        },
+        side_effect_proof={
+            "effect": "calendar_event_created",
+            "account_alias": "jarvis_test",
+            "event_id": result["event_id"],
+            "completed_at": datetime.now(UTC).isoformat(),
+        },
+    )
+
+
+def email_draft_create_preview(model: BaseModel, _: Settings) -> dict[str, Any]:
+    payload = EmailDraftCreateInput.model_validate(model.model_dump())
+    return {
+        "operation": "email_draft_create_in_mailbox",
+        "account_alias": payload.account_alias,
+        "to": payload.to,
+        "subject": payload.subject,
+        "body_preview": payload.body[:4_000],
+        "body_preview_truncated": len(payload.body) > 4_000,
+        "warning": "在测试邮箱账号内创建草稿，不会发送任何邮件。",
+    }
+
+
+async def handle_email_draft_create(
+    model: BaseModel,
+    settings: Settings,
+    _context: ToolExecutionContext | None = None,
+) -> ToolHandlerResult:
+    payload = EmailDraftCreateInput.model_validate(model.model_dump())
+    result = await n8n_provider.call_n8n_provider(
+        settings,
+        path="/v1/email/draft/create",
+        payload=payload.model_dump(mode="json"),
+    )
+    if (
+        result.get("status") != "draft_created"
+        or result.get("not_sent") is not True
+        or result.get("account_alias") != "jarvis_test"
+        or result.get("credential_exposed") is not False
+        or not isinstance(result.get("draft_id"), str)
+        or not result.get("draft_id")
+        or not isinstance(result.get("draft"), dict)
+    ):
+        raise ToolCatalogError("n8n email draft workflow returned an invalid envelope")
+    draft = result["draft"]
+    if draft.get("to") != payload.to or draft.get("subject") != payload.subject:
+        raise ToolCatalogError("n8n email draft changed the requested recipient or subject")
+    return ToolHandlerResult(
+        output={
+            "status": "draft_created",
+            "not_sent": True,
+            "account_alias": "jarvis_test",
+            "draft_id": result["draft_id"],
+            "credential_exposed": False,
+        },
+        side_effect_proof={
+            "effect": "email_draft_created_in_mailbox",
+            "account_alias": "jarvis_test",
+            "draft_id": result["draft_id"],
+            "completed_at": datetime.now(UTC).isoformat(),
+        },
+    )
+
+
 async def handle_browser_job_research(
     model: BaseModel,
     settings: Settings,
+    _context: ToolExecutionContext | None = None,
 ) -> ToolHandlerResult:
     payload = BrowserJobResearchInput.model_validate(model.model_dump())
     try:
@@ -494,12 +665,35 @@ async def handle_browser_job_research(
 def _write_workspace_file(
     payload: WorkspaceFileWriteInput,
     settings: Settings,
+    context: ToolExecutionContext | None,
 ) -> ToolHandlerResult:
+    if context is None:
+        raise ToolCatalogError("workspace.file.write requires an execution context")
     root, target = resolve_workspace_target(payload, settings)
     root.mkdir(parents=True, exist_ok=True)
     target.parent.mkdir(parents=True, exist_ok=True)
-    before_hash = _file_hash(target) if target.exists() else None
+    exists = target.exists()
+    before_hash = _file_hash(target) if exists else None
     encoded = payload.content.encode()
+    after_hash = hashlib.sha256(encoded).hexdigest()
+    backup_dir = _backup_dir(settings, context.execution_id)
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    if exists:
+        (backup_dir / "original.bin").write_bytes(target.read_bytes())
+    manifest = {
+        "execution_id": str(context.execution_id),
+        "relative_path": target.relative_to(root).as_posix(),
+        "operation": "replace_file" if exists else "create_file",
+        "before_sha256": before_hash,
+        "after_sha256": after_hash,
+        "size_bytes": len(encoded),
+        "restored": False,
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+    (backup_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
     temporary_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -518,13 +712,22 @@ def _write_workspace_file(
     finally:
         if temporary_path is not None and temporary_path.exists():
             temporary_path.unlink()
-    after_hash = _file_hash(target)
+    resolved_target = target.resolve()
+    if not resolved_target.is_relative_to(root) or resolved_target.is_relative_to(
+        _backup_root(settings)
+    ):
+        raise ToolCatalogError("File target escaped the Jarvis tool sandbox after write")
+    verified_hash = _file_hash(target)
+    if verified_hash != after_hash:
+        raise ToolCatalogError("Post-write verification failed; execution marked failed")
     proof = {
         "effect": "file_written",
         "sandbox_relative_path": target.relative_to(root).as_posix(),
         "before_sha256": before_hash,
         "after_sha256": after_hash,
         "size_bytes": target.stat().st_size,
+        "backup_available": exists,
+        "backup_relative_path": backup_dir.relative_to(root).as_posix(),
         "completed_at": datetime.now(UTC).isoformat(),
     }
     return ToolHandlerResult(
@@ -539,14 +742,144 @@ def _write_workspace_file(
 async def handle_workspace_file(
     model: BaseModel,
     settings: Settings,
+    context: ToolExecutionContext | None = None,
 ) -> ToolHandlerResult:
+    _require_stage_three(settings)
     payload = WorkspaceFileWriteInput.model_validate(model.model_dump())
-    return await asyncio.to_thread(_write_workspace_file, payload, settings)
+    return await asyncio.to_thread(_write_workspace_file, payload, settings, context)
+
+
+def _load_backup_manifest(
+    settings: Settings,
+    execution_id: uuid.UUID,
+) -> dict[str, Any]:
+    manifest_path = _backup_dir(settings, execution_id) / "manifest.json"
+    if not manifest_path.is_file():
+        raise ToolCatalogError("Backup manifest not found for this execution")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ToolCatalogError("Backup manifest is unreadable or corrupt") from exc
+    if not isinstance(manifest, dict):
+        raise ToolCatalogError("Backup manifest has an invalid envelope")
+    return manifest
+
+
+def workspace_file_restore_preview(
+    model: BaseModel,
+    settings: Settings,
+) -> dict[str, Any]:
+    _require_stage_three(settings)
+    payload = WorkspaceFileRestoreInput.model_validate(model.model_dump())
+    manifest = _load_backup_manifest(settings, payload.execution_id)
+    if manifest.get("operation") != "replace_file":
+        return {
+            "operation": "restore_unavailable",
+            "reason": "created_files_have_no_pre_write_state",
+            "warning": (
+                "该文件由写入操作新建，没有可恢复的写前内容；"
+                "删除属 R3，只能由用户手动处理。"
+            ),
+        }
+    return {
+        "operation": "restore_file",
+        "sandbox_relative_path": manifest.get("relative_path"),
+        "before_sha256": manifest.get("before_sha256"),
+        "after_sha256": manifest.get("after_sha256"),
+        "already_restored": bool(manifest.get("restored")),
+        "warning": (
+            "恢复将把文件还原为该次写入之前的内容，需要单独批准与执行。"
+        ),
+    }
+
+
+def _restore_workspace_file(
+    payload: WorkspaceFileRestoreInput,
+    settings: Settings,
+) -> ToolHandlerResult:
+    _require_stage_three(settings)
+    manifest = _load_backup_manifest(settings, payload.execution_id)
+    if manifest.get("operation") != "replace_file":
+        raise ToolCatalogError(
+            "Created files have no pre-write state; removal is a manual R3 action"
+        )
+    if manifest.get("restored"):
+        raise ToolCatalogError("Backup has already been restored")
+    relative = Path(str(manifest.get("relative_path") or ""))
+    if not str(manifest.get("relative_path")) or relative.is_absolute():
+        raise ToolCatalogError("Backup manifest contains an invalid path")
+    root = _workspace_root(settings)
+    target = (root / relative).resolve()
+    if not target.is_relative_to(root) or target.is_relative_to(_backup_root(settings)):
+        raise ToolCatalogError("Backup manifest path escaped the Jarvis tool sandbox")
+    current_hash = _file_hash(target) if target.exists() else None
+    if current_hash != manifest.get("after_sha256"):
+        raise ToolCatalogError(
+            "Current file no longer matches the executed write; restore refused"
+        )
+    original_path = _backup_dir(settings, payload.execution_id) / "original.bin"
+    if not original_path.is_file():
+        raise ToolCatalogError("Backup payload is missing")
+    original = original_path.read_bytes()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=target.parent,
+            prefix=".jarvis-tool-",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary_path = Path(handle.name)
+            handle.write(original)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, target)
+        temporary_path = None
+    finally:
+        if temporary_path is not None and temporary_path.exists():
+            temporary_path.unlink()
+    restored_hash = _file_hash(target)
+    before_hash = manifest.get("before_sha256")
+    if before_hash is None or restored_hash != before_hash:
+        raise ToolCatalogError("Restore verification failed; execution marked failed")
+    manifest["restored"] = True
+    manifest["restored_at"] = datetime.now(UTC).isoformat()
+    (_backup_dir(settings, payload.execution_id) / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    proof = {
+        "effect": "file_restored",
+        "sandbox_relative_path": str(manifest.get("relative_path")),
+        "before_sha256": before_hash,
+        "after_sha256": manifest.get("after_sha256"),
+        "restored_sha256": restored_hash,
+        "completed_at": datetime.now(UTC).isoformat(),
+    }
+    return ToolHandlerResult(
+        output={
+            "status": "restored",
+            "sandbox_relative_path": proof["sandbox_relative_path"],
+        },
+        side_effect_proof=proof,
+    )
+
+
+async def handle_workspace_file_restore(
+    model: BaseModel,
+    settings: Settings,
+    _context: ToolExecutionContext | None = None,
+) -> ToolHandlerResult:
+    payload = WorkspaceFileRestoreInput.model_validate(model.model_dump())
+    return await asyncio.to_thread(_restore_workspace_file, payload, settings)
 
 
 async def handle_computer_screen_info(
     model: BaseModel,
     settings: Settings,
+    _context: ToolExecutionContext | None = None,
 ) -> ToolHandlerResult:
     if settings.computer_use_stage < 1:
         raise ToolCatalogError("Computer-use stage 1 (read-only) is not enabled")
@@ -560,6 +893,7 @@ async def handle_computer_screen_info(
 async def handle_workspace_file_read(
     model: BaseModel,
     settings: Settings,
+    _context: ToolExecutionContext | None = None,
 ) -> ToolHandlerResult:
     if settings.computer_use_stage < 1:
         raise ToolCatalogError("Computer-use stage 1 (read-only) is not enabled")
@@ -753,6 +1087,25 @@ TOOL_REGISTRY.register(
 )
 TOOL_REGISTRY.register(
     _definition(
+        tool_id="workspace.file.restore",
+        version="1.0.0",
+        display_name="恢复受控工作区文件",
+        description=(
+            "把沙箱文件还原到某次 R2 写入之前的内容；恢复同样需要"
+            "预览、批准并单独执行，且只针对写入前的既有文件。"
+        ),
+        action_kind=ActionKind.MODIFY_FILE,
+        input_model=WorkspaceFileRestoreInput,
+        scope="project_tool_sandbox",
+        data_sensitivity="private_local",
+        external_side_effect=True,
+        allowed_agents=frozenset({AgentId.LOCAL_DOCUMENT}),
+        preview_builder=workspace_file_restore_preview,
+        handler=handle_workspace_file_restore,
+    )
+)
+TOOL_REGISTRY.register(
+    _definition(
         tool_id="computer.screen.info",
         version="1.0.0",
         display_name="读取屏幕元数据",
@@ -792,18 +1145,41 @@ for reserved in (
         tool_id="calendar.event.upsert",
         version="0.1.0",
         display_name="修改日历事件",
-        description="预留未来的真实日历写入；当前只有沙箱只读日历。",
+        description=(
+            "向测试日历账号写入事件；当前 Provider 未连接测试账号，"
+            "工具保持不可用，环境就绪后开启。"
+        ),
         action_kind=ActionKind.MODIFY_CALENDAR,
         input_model=CalendarEventInput,
         scope="external_calendar",
         data_sensitivity="personal",
         external_side_effect=True,
         allowed_agents=frozenset({AgentId.GROWTH}),
-        preview_builder=unavailable_preview,
-        handler=None,
+        preview_builder=calendar_event_upsert_preview,
+        handler=handle_calendar_event_upsert,
         available=False,
-        unavailable_reason="Real calendar write provider is not connected",
+        unavailable_reason="Test calendar account is not connected",
         credential_scope="calendar_write",
+    ),
+    _definition(
+        tool_id="email.draft.create",
+        version="0.1.0",
+        display_name="在测试邮箱创建邮件草稿",
+        description=(
+            "在测试邮箱账号内创建邮件草稿，不发送；当前 Provider 未连接"
+            "测试账号，工具保持不可用，环境就绪后开启。"
+        ),
+        action_kind=ActionKind.EMAIL_ACTION,
+        input_model=EmailDraftCreateInput,
+        scope="external_email_test",
+        data_sensitivity="personal_draft",
+        external_side_effect=True,
+        allowed_agents=frozenset(),
+        preview_builder=email_draft_create_preview,
+        handler=handle_email_draft_create,
+        available=False,
+        unavailable_reason="Test mailbox account is not connected",
+        credential_scope="email_draft_test_account",
     ),
     _definition(
         tool_id="email.send",
@@ -866,3 +1242,17 @@ PERMANENTLY_BLOCKED_ACTIONS: tuple[ActionKind, ...] = (
     ActionKind.DELETE_DATA,
     ActionKind.CREDENTIAL_OPERATION,
 )
+
+
+def reconcile_tools() -> list[str]:
+    """ToolRegistry-side reconciliation entry point (H5 single source).
+
+    Delegates to the authoritative gate in ``agent_core.reconciliation``
+    (AI Agent Engineer) without creating an import cycle; returns the list of
+    drift problems (empty list = clean). Consumers (QA gate, startup checks)
+    may call this after the registry is fully populated.
+    """
+
+    from app.services.agent_core.reconciliation import reconcile_agent_tool_whitelists
+
+    return reconcile_agent_tool_whitelists()
