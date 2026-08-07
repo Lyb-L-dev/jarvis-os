@@ -81,6 +81,44 @@ export type UiEvent =
   | { id: string; type: "heartbeat"; data: null }
   | { id: string; type: string; data: unknown };
 
+/**
+ * V3-4b unified "page summary card" contract — frozen in V3-0 per plan
+ * §12.1-7 so the eight "dialog-first" pages (memory / knowledge / growth /
+ * english / intelligence / investment / career / notifications) share one
+ * rendering component and one payload shape. The backend does NOT implement
+ * this yet; it aligns at V3-4b. Do not extend without a contract freeze.
+ */
+export type DialogCard = {
+  /** Stable page key, e.g. "memory" | "knowledge" | "growth". */
+  card_key: string;
+  /** Page display name. */
+  title: string;
+  /** One-paragraph summary shown inside the dialog workspace. */
+  summary: string;
+  /** Optional state text, e.g. "3 pending" (string keeps it forward-compatible). */
+  status?: string;
+  /** Last change timestamp (ISO string or epoch ms). */
+  updated_at?: string;
+  /** Optional action references, e.g. { approve: "/approvals?id=..." }. */
+  action_refs?: Record<string, string>;
+  /** Free-form metadata reserved for future fields. */
+  meta?: Record<string, unknown>;
+};
+
+/**
+ * True when the dialog workspace API is unavailable because the feature flag
+ * is off (HTTP 404) or the backend/network is unreachable. Consumers use this
+ * to silently degrade to the classic chat view without an error banner.
+ */
+export function isDialogUnavailable(error: unknown): boolean {
+  if (error instanceof Error) {
+    return /404|dialog workspace is disabled|failed to fetch|networkerror|load failed|aborted/i.test(
+      error.message,
+    );
+  }
+  return false;
+}
+
 export async function getDialogWorkspace(
   signal?: AbortSignal,
 ): Promise<DialogWorkspaceResponse> {

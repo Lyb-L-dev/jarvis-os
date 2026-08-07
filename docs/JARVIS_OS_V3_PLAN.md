@@ -554,3 +554,21 @@ memory_events
 
 **验收（V3-0）**：/chat 走查无回归；flag 关闭/开启两端点行为正确（404/200）；
 SSE 快照+心跳测试通过；契约测试与全量回归通过；首页并行请求后续由 V3-4 清零。
+
+### 14. V3-0 交付记录（2026-08-07 完成）
+
+| 交付 | 证据 |
+|---|---|
+| Feature Flags | `v3_dialog_workspace_enabled` / `v3_sse_enabled`（config/.env.example/测试） |
+| `GET /ui/dialog` | 真实数据验证：3 会话 / 1 进行中 Run / 1 待审批 / data_version 正常 |
+| `GET /ui/events` | SSE 快照 + dialog 事件实测（curl 抓帧：`id:1 snapshot`、`id:2 dialog`） |
+| 前端 API 模块 | `lib/api/dialog.ts`（getDialogWorkspace / subscribeUiEvents / 类型 + DialogCard 预留） |
+| ChatWorkspace 升级 | `components/chat/dialog-workspace-panel.tsx` + 接入 + 面板 CSS（纯新增类） |
+| 验收脚本 | `scripts/verify_chat_workspace.cjs`（flag-on/off 双模式） |
+| 回归 | `check.ps1` **exit 0**；pytest **362 passed / 0 skipped / 0 xfailed**；typecheck/lint 通过 |
+| 浏览器走查 | flag-on：面板可见、0 控制台错误、契约键完整；flag-off：面板隐藏、404 静默降级、0 错误 |
+
+**flag 状态**：默认关闭（灰度）。V3-1 开工前保持关闭，集成验收时按需临时开启。
+
+**V3-0 未做（留给后续阶段）**：首页并行 10 请求清零（V3-4）；SSE 事件持久化（V3-4a）；
+八个"对话化为主"页面摘要卡片（V3-4b，DialogCard 契约已预留）。

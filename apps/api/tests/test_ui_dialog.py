@@ -41,15 +41,24 @@ def test_dialog_workspace_shape_when_enabled() -> None:
             "server_time",
         }
         assert isinstance(payload["data_version"], int)
+        assert payload["data_version"] >= 0
         assert isinstance(payload["conversations"], list)
+        assert len(payload["conversations"]) <= 20
         assert isinstance(payload["active_runs"], list)
+        assert len(payload["active_runs"]) <= 10
         assert isinstance(payload["pending_approvals"], list)
+        assert len(payload["pending_approvals"]) <= 10
         assert isinstance(payload["proactive_suggestions"], list)
+        assert len(payload["proactive_suggestions"]) <= 10
         assert set(payload["today_summary"]) >= {
             "tasks_due",
             "reviews_due",
             "brief_ready",
         }
+        assert isinstance(payload["today_summary"]["tasks_due"], int)
+        assert isinstance(payload["today_summary"]["reviews_due"], int)
+        assert isinstance(payload["today_summary"]["brief_ready"], bool)
+        assert payload["server_time"]
     finally:
         os.environ.pop("V3_DIALOG_WORKSPACE_ENABLED", None)
         get_settings.cache_clear()

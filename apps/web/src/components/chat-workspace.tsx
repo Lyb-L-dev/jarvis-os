@@ -9,6 +9,7 @@ import { ChatMessageFlow } from "@/components/chat/chat-message-flow";
 import { ChatSessionDrawer } from "@/components/chat/chat-session-drawer";
 import { ChatWorkspaceHeader } from "@/components/chat/chat-workspace-header";
 import { ChatWorkspaceInspector } from "@/components/chat/chat-workspace-inspector";
+import { DialogWorkspacePanel } from "@/components/chat/dialog-workspace-panel";
 import { useChatStream } from "@/components/chat/use-chat-stream";
 import { useConversationList } from "@/components/chat/use-conversation-list";
 import { useDictation } from "@/components/chat/use-dictation";
@@ -97,6 +98,8 @@ export function ChatWorkspace() {
             if (!stream.sending) void list.archiveActiveConversation();
           }}
         />
+
+        <DialogWorkspacePanel />
 
         <div className="workspace-body">
           <section className="workspace-transcript">
