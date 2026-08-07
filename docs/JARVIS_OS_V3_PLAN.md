@@ -609,3 +609,40 @@ relation/event 级联可见性）；规则抽取与 Qwen 抽取分别统计采�
 goal/milestone/mistake/review 结构化来源 + 对话非结构化文本），
 `scripts/evaluate-memory-adoption.py` 输出采纳率
 （= 确认候选 / (确认+忽略+合并)），规则与 Qwen 分开统计。
+
+### 16. V3-1 落地记录（2026-08-07，Tech Lead 收口）
+
+**状态：完成并验收**。实现、集成、真库与浏览器验证全部通过；提交
+`v3-1(tech-lead): contract freeze`（表/flag/契约）与
+`v3-1(tech-lead): 记忆网络实现 + 集成 + 评测集`（实现与收口）。
+
+**后端**（Memory Engineer 实现，Tech Lead 集成）：
+
+- 三张表（memory_entities / memory_relations / memory_events）+ 迁移 0032
+  已应用；模型与迁移 DDL 零漂移（含 server_default 修复，回归测试锁定）。
+- 6 个端点全部实现并注册（/api/v1/memory-network/*）；flag
+  `v3_memory_network_enabled` 默认关闭，关闭时 404。
+- 规则抽取覆盖 growth/english/intelligence/investment 结构化来源；Qwen
+  抽取走本地路由，模型不可用静默降级不产生半成品；敏感内容送入模型前拦截。
+- 确认制生效：候选必须 confirm 才可被检索/入上下文（真库实测确认前 query
+  为空、确认后召回）。
+- multi-hop 检索 ≤2 hop、召回 ≤12、8K token 预算、含溯源。
+
+**前端**（Frontend Evolution 实现）：记忆候选确认卡挂载于对话工作区
+（确认/忽略/合并/抽取/刷新），flag 关闭或后端不可用时静默隐藏。
+
+**QA**：评测集 evals/memory-network-eval-set.jsonl（36 条）+ 采纳率脚本
+scripts/evaluate-memory-adoption.py（规则/Qwen 分开统计，真库实测输出）；
+API 契约测试 6 例；PG 集成用例真库跑通（30/30）；浏览器验收
+verify_memory_candidates.cjs 通过（flag 开：面板渲染 + 确认后移除）。
+
+**门禁**：check.ps1 exit 0；pytest 344 passed / 30 skipped（环境门控）；
+ruff 全绿；提示词评测 25/25。
+
+**验收对照**：候选确认制 ✅；multi-hop 检索用例 ✅（测试 + 真库）；
+云端过滤字段 ✅（cloud_allowed 全链路保留，V3-2 合成时消费）；
+删除/停用传播 ✅（entity archive → relation/event 级联）；
+采纳率统计 ✅；check.ps1 全绿 ✅；关 flag 旧路径不变 ✅。
+
+**待观察（2 周基线）**：Qwen 抽取目前无实跑数据（Ollama 未常驻），采纳率
+基线先以规则抽取数据起算；n8n/Ollama 全栈复跑仍属环境门控。

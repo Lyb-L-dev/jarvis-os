@@ -559,3 +559,131 @@ async def test_pg_status_invalid_value_is_rejected(
 
     with pytest.raises(IntegrityError):
         await pg_session.commit()
+
+
+async def test_memory_network_insert_populates_timestamps(
+    pg_session: AsyncSession,
+) -> None:
+    """ORM inserts on PG populate created_at/updated_at via server defaults.
+
+    Regression guard for the V3-1 migration drift where the migration omitted
+    ``server_default=now()``: SQLite stayed green but real PG raised a
+    NOT NULL violation on insert.
+    """
+
+    from app.db.models import (
+        MemoryEntity,
+        MemoryEvent,
+        MemoryRelation,
+    )
+
+    user = await create_user(pg_session)
+    entity = MemoryEntity(
+        user_id=user.id,
+        entity_type="topic",
+        name="pg-verification",
+        normalized_key="pg-verification",
+        status="candidate",
+        source_kind="manual",
+        cloud_allowed=False,
+    )
+    pg_session.add(entity)
+    await pg_session.flush()
+    assert entity.created_at is not None
+    assert entity.updated_at is not None
+
+    relation = MemoryRelation(
+        user_id=user.id,
+        from_entity_id=entity.id,
+        relation_type="focuses_on",
+        to_entity_id=entity.id,
+        confidence=0.8,
+        status="candidate",
+        source_kind="manual",
+    )
+    event = MemoryEvent(
+        user_id=user.id,
+        entity_ids=[str(entity.id)],
+        event_type="goal_set",
+        happened_at=datetime.now(UTC),
+        ingested_at=datetime.now(UTC),
+        summary="pg event",
+        source_kind="manual",
+        status="candidate",
+    )
+    pg_session.add_all((relation, event))
+    await pg_session.commit()
+    assert relation.created_at is not None
+    assert event.created_at is not None
+
+
+@pytest.mark.parametrize(
+    ("model", "column", "invalid"),
+    [
+        ("entity", "status", "bogus"),
+        ("relation", "status", "bogus"),
+        ("event", "status", "bogus"),
+        ("entity", "entity_type", "bogus"),
+        ("event", "event_type", "bogus"),
+    ],
+)
+async def test_memory_network_invalid_status_is_rejected(
+    pg_session: AsyncSession,
+    model: str,
+    column: str,
+    invalid: str,
+) -> None:
+    """New memory-network tables enforce status/type CHECK constraints on PG."""
+
+    from app.db.models import (
+        MemoryEntity,
+        MemoryEvent,
+        MemoryRelation,
+    )
+
+    user = await create_user(pg_session)
+    if model == "entity":
+        row = MemoryEntity(
+            user_id=user.id,
+            entity_type="topic",
+            name="invalid",
+            normalized_key="invalid",
+            status="candidate",
+            source_kind="manual",
+            cloud_allowed=False,
+        )
+    elif model == "relation":
+        base = MemoryEntity(
+            user_id=user.id,
+            entity_type="topic",
+            name="base",
+            normalized_key="base",
+            status="candidate",
+            source_kind="manual",
+            cloud_allowed=False,
+        )
+        pg_session.add(base)
+        await pg_session.flush()
+        row = MemoryRelation(
+            user_id=user.id,
+            from_entity_id=base.id,
+            relation_type="focuses_on",
+            to_entity_id=base.id,
+            confidence=0.5,
+            status="candidate",
+            source_kind="manual",
+        )
+    else:
+        row = MemoryEvent(
+            user_id=user.id,
+            event_type="goal_set",
+            happened_at=datetime.now(UTC),
+            ingested_at=datetime.now(UTC),
+            summary="invalid",
+            source_kind="manual",
+            status="candidate",
+        )
+    setattr(row, column, invalid)
+    pg_session.add(row)
+    with pytest.raises(IntegrityError):
+        await pg_session.commit()

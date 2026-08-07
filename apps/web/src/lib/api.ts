@@ -16,6 +16,7 @@ export * from "./api/system";
 export * from "./api/knowledge";
 export * from "./api/chat";
 export * from "./api/memory";
+export * from "./api/memory-network";
 export * from "./api/growth";
 export * from "./api/english";
 export * from "./api/intelligence";

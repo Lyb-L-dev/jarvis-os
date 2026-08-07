@@ -1973,6 +1973,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/memory-network/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Candidates
+         * @description 候选列表（entity/relation/event，按 status 过滤）。
+         */
+        get: operations["list_candidates_api_v1_memory_network_candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/memory-network/extract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Extraction
+         * @description 规则优先 + 本地 Qwen 抽取，写入候选；返回计数。
+         */
+        post: operations["run_extraction_api_v1_memory_network_extract_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/memory-network/candidates/{candidate_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Candidate
+         * @description 确认候选（激活，可被检索/入上下文；实体同步 pgvector 语义索引）。
+         */
+        post: operations["confirm_candidate_api_v1_memory_network_candidates__candidate_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/memory-network/candidates/{candidate_id}/ignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ignore Candidate
+         * @description 忽略候选（归档/ignored，不删除；实体归档传播到关联关系）。
+         */
+        post: operations["ignore_candidate_api_v1_memory_network_candidates__candidate_id__ignore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/memory-network/candidates/{candidate_id}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge Candidate
+         * @description 合并源实体到目标实体（源置 merged，关系迁移）。
+         */
+        post: operations["merge_candidate_api_v1_memory_network_candidates__candidate_id__merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/memory-network/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Query Network
+         * @description multi-hop 检索（≤2 hop、召回 ≤12、8K token 预算），附溯源。
+         */
+        get: operations["query_network_api_v1_memory_network_query_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/memory-shadow/cases": {
         parameters: {
             query?: never;
@@ -3574,6 +3694,24 @@ export interface components {
             latest_backup?: components["schemas"]["BackupRecord"] | null;
             /** Worker Error */
             worker_error?: string | null;
+        };
+        /** CandidateCounts */
+        CandidateCounts: {
+            /**
+             * Entities
+             * @default 0
+             */
+            entities: number;
+            /**
+             * Relations
+             * @default 0
+             */
+            relations: number;
+            /**
+             * Events
+             * @default 0
+             */
+            events: number;
         };
         /** CareerEvidencePageResponse */
         CareerEvidencePageResponse: {
@@ -6081,6 +6219,197 @@ export interface components {
              * @default false
              */
             cloud_allowed: boolean;
+        };
+        /** MemoryEntityDTO */
+        MemoryEntityDTO: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Entity Type */
+            entity_type: string;
+            /** Name */
+            name: string;
+            /** Normalized Key */
+            normalized_key: string;
+            /** Status */
+            status: string;
+            /** Source Kind */
+            source_kind: string;
+            /** Source Id */
+            source_id: string | null;
+            /** Importance */
+            importance: number;
+            /** Cloud Allowed */
+            cloud_allowed: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** MemoryEventDTO */
+        MemoryEventDTO: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Entity Ids */
+            entity_ids: string[] | null;
+            /** Event Type */
+            event_type: string;
+            /**
+             * Happened At
+             * Format: date-time
+             */
+            happened_at: string;
+            /**
+             * Ingested At
+             * Format: date-time
+             */
+            ingested_at: string;
+            /** Summary */
+            summary: string;
+            /** Source Kind */
+            source_kind: string;
+            /** Source Id */
+            source_id: string | null;
+            /** Ref Json */
+            ref_json: {
+                [key: string]: unknown;
+            };
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** MemoryNetworkCandidatesResponse */
+        MemoryNetworkCandidatesResponse: {
+            /** Entities */
+            entities: components["schemas"]["MemoryEntityDTO"][];
+            /** Relations */
+            relations: components["schemas"]["MemoryRelationDTO"][];
+            /** Events */
+            events: components["schemas"]["MemoryEventDTO"][];
+        };
+        /** MemoryNetworkExtractRequest */
+        MemoryNetworkExtractRequest: {
+            /**
+             * Scope
+             * @default all
+             * @enum {string}
+             */
+            scope: "structured" | "unstructured" | "all";
+        };
+        /** MemoryNetworkExtractResponse */
+        MemoryNetworkExtractResponse: {
+            created: components["schemas"]["CandidateCounts"];
+            /**
+             * Degraded
+             * @default false
+             */
+            degraded: boolean;
+        };
+        /** MemoryNetworkMutationResponse */
+        MemoryNetworkMutationResponse: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "entity" | "relation" | "event";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Status */
+            status: string;
+            entity?: components["schemas"]["MemoryEntityDTO"] | null;
+            relation?: components["schemas"]["MemoryRelationDTO"] | null;
+            event?: components["schemas"]["MemoryEventDTO"] | null;
+            /**
+             * Merged Ids
+             * @default []
+             */
+            merged_ids: string[];
+        };
+        /** MemoryNetworkQueryResponse */
+        MemoryNetworkQueryResponse: {
+            /** Entities */
+            entities: components["schemas"]["MemoryEntityDTO"][];
+            /** Relations */
+            relations: components["schemas"]["MemoryRelationDTO"][];
+            /** Events */
+            events: components["schemas"]["MemoryEventDTO"][];
+            /** Provenance */
+            provenance: components["schemas"]["MemoryProvenanceDTO"][];
+            token_budget: components["schemas"]["MemoryNetworkTokenBudget"];
+        };
+        /** MemoryNetworkTokenBudget */
+        MemoryNetworkTokenBudget: {
+            /** Used */
+            used: number;
+            /** Limit */
+            limit: number;
+        };
+        /** MemoryProvenanceDTO */
+        MemoryProvenanceDTO: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "entity" | "relation" | "event";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Source Kind */
+            source_kind: string;
+            /** Source Id */
+            source_id: string | null;
+        };
+        /** MemoryRelationDTO */
+        MemoryRelationDTO: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * From Entity Id
+             * Format: uuid
+             */
+            from_entity_id: string;
+            /** Relation Type */
+            relation_type: string;
+            /**
+             * To Entity Id
+             * Format: uuid
+             */
+            to_entity_id: string;
+            /** Confidence */
+            confidence: number;
+            /** Status */
+            status: string;
+            /** Source Kind */
+            source_kind: string;
+            /** Source Id */
+            source_id: string | null;
+            /** Properties */
+            properties: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** MemoryResponse */
         MemoryResponse: {
@@ -13576,6 +13905,199 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MemoryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_candidates_api_v1_memory_network_candidates_get: {
+        parameters: {
+            query?: {
+                status?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryNetworkCandidatesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_extraction_api_v1_memory_network_extract_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemoryNetworkExtractRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryNetworkExtractResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_candidate_api_v1_memory_network_candidates__candidate_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryNetworkMutationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ignore_candidate_api_v1_memory_network_candidates__candidate_id__ignore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryNetworkMutationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    merge_candidate_api_v1_memory_network_candidates__candidate_id__merge_post: {
+        parameters: {
+            query: {
+                /** @description 目标实体 id */
+                into: string;
+            };
+            header?: never;
+            path: {
+                candidate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryNetworkMutationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    query_network_api_v1_memory_network_query_get: {
+        parameters: {
+            query?: {
+                q?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryNetworkQueryResponse"];
                 };
             };
             /** @description Validation Error */

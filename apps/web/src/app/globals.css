@@ -23017,3 +23017,136 @@ body:has(.tablet-terminal) .app-header {
   color: #a5f3fc;
 }
 
+/* ===== V3-1 记忆候选确认卡 ===== */
+.memory-candidate-card {
+  max-width: none;
+}
+
+.memory-candidate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.memory-candidate-header h3 {
+  margin: 0;
+}
+
+.memory-candidate-header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.memory-candidate-list {
+  gap: 8px;
+}
+
+.memory-candidate-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  border: 1px solid rgba(34, 211, 238, 0.1);
+  border-radius: 8px;
+  background: rgba(3, 8, 13, 0.35);
+}
+
+.memory-candidate-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.memory-candidate-kind {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #67e8f9;
+  background: rgba(34, 211, 238, 0.12);
+}
+
+.memory-candidate-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.memory-candidate-text strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #e0f7ff;
+}
+
+.memory-candidate-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: #8fb0c4;
+}
+
+.memory-candidate-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.memory-candidate-action {
+  padding: 3px 10px;
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #a5f3fc;
+  background: transparent;
+  cursor: pointer;
+}
+
+.memory-candidate-action:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.1);
+}
+
+.memory-candidate-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.memory-candidate-action-primary {
+  border-color: rgba(52, 211, 153, 0.35);
+  color: #6ee7b7;
+}
+
+.memory-candidate-action-primary:hover:not(:disabled) {
+  background: rgba(52, 211, 153, 0.12);
+}
+
+.memory-merge-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.memory-merge-picker select {
+  max-width: 160px;
+  padding: 3px 6px;
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #a5f3fc;
+  background: rgba(3, 8, 13, 0.8);
+}
+
+.memory-candidate-notice {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #8fb0c4;
+}
+

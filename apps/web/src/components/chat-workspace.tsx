@@ -10,6 +10,7 @@ import { ChatSessionDrawer } from "@/components/chat/chat-session-drawer";
 import { ChatWorkspaceHeader } from "@/components/chat/chat-workspace-header";
 import { ChatWorkspaceInspector } from "@/components/chat/chat-workspace-inspector";
 import { DialogWorkspacePanel } from "@/components/chat/dialog-workspace-panel";
+import { MemoryCandidatePanel } from "@/components/chat/memory-candidate-panel";
 import { useChatStream } from "@/components/chat/use-chat-stream";
 import { useConversationList } from "@/components/chat/use-conversation-list";
 import { useDictation } from "@/components/chat/use-dictation";
@@ -100,6 +101,8 @@ export function ChatWorkspace() {
         />
 
         <DialogWorkspacePanel />
+
+        <MemoryCandidatePanel />
 
         <div className="workspace-body">
           <section className="workspace-transcript">
