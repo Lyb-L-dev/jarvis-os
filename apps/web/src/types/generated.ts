@@ -3271,6 +3271,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ui/dialog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dialog Workspace
+         * @description 对话工作台一次拉齐（V3-0）。flag 关闭时 404，前端保持旧路径。
+         */
+        get: operations["get_dialog_workspace_api_v1_ui_dialog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ui/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ui Events
+         * @description SSE 事件流（V3-0 基座）。flag 关闭时 404。
+         */
+        get: operations["ui_events_api_v1_ui_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4549,6 +4589,148 @@ export interface components {
             status: "ready" | "not_configured" | "unavailable";
             /** Detail */
             detail?: string | null;
+        };
+        /** DialogActiveRun */
+        DialogActiveRun: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Agent Id */
+            agent_id: string;
+            /** Agent Name */
+            agent_name: string;
+            /** Runtime */
+            runtime: string;
+            /** Status */
+            status: string;
+            /** Current Step */
+            current_step?: string | null;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** DialogConversation */
+        DialogConversation: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /** Model Mode */
+            model_mode: string;
+            /**
+             * Last Message At
+             * Format: date-time
+             */
+            last_message_at: string;
+            /**
+             * Message Count
+             * @default 0
+             */
+            message_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** DialogPendingApproval */
+        DialogPendingApproval: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Source */
+            source: string;
+            /** Title */
+            title: string;
+            /** Risk Level */
+            risk_level: string;
+            /** Agent Id */
+            agent_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** DialogProactive */
+        DialogProactive: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Suggestion Type */
+            suggestion_type: string;
+            /** Title */
+            title: string;
+            /** Rationale */
+            rationale: string;
+            /** Priority */
+            priority: number;
+        };
+        /** DialogTodaySummary */
+        DialogTodaySummary: {
+            /**
+             * Tasks Due
+             * @default 0
+             */
+            tasks_due: number;
+            /**
+             * Reviews Due
+             * @default 0
+             */
+            reviews_due: number;
+            /**
+             * Brief Ready
+             * @default false
+             */
+            brief_ready: boolean;
+        };
+        /** DialogUserBrief */
+        DialogUserBrief: {
+            /** Name */
+            name: string;
+            /** Timezone */
+            timezone: string;
+        };
+        /** DialogWorkspaceResponse */
+        DialogWorkspaceResponse: {
+            /** Data Version */
+            data_version: number;
+            user: components["schemas"]["DialogUserBrief"];
+            /** Conversations */
+            conversations: components["schemas"]["DialogConversation"][];
+            /** Active Runs */
+            active_runs: components["schemas"]["DialogActiveRun"][];
+            /** Pending Approvals */
+            pending_approvals: components["schemas"]["DialogPendingApproval"][];
+            /** Proactive Suggestions */
+            proactive_suggestions: components["schemas"]["DialogProactive"][];
+            today_summary: components["schemas"]["DialogTodaySummary"];
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
         };
         /** EnglishMessageResponse */
         EnglishMessageResponse: {
@@ -16024,6 +16206,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TabletBootstrapResponse"];
+                };
+            };
+        };
+    };
+    get_dialog_workspace_api_v1_ui_dialog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DialogWorkspaceResponse"];
+                };
+            };
+        };
+    };
+    ui_events_api_v1_ui_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

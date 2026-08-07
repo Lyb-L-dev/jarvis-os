@@ -14,6 +14,8 @@ def test_only_read_only_shadow_router_is_enabled_by_default() -> None:
     assert settings.v2_research_workflow_enabled is False
     assert settings.v2_mem0_shadow_enabled is False
     assert settings.v2_mem0_chat_shadow_enabled is False
+    assert settings.v3_dialog_workspace_enabled is False
+    assert settings.v3_sse_enabled is False
     assert settings.any_v2_feature_enabled is True
 
 

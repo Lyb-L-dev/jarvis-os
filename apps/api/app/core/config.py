@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     v2_semantic_memory_enabled: bool = False
     v2_mem0_shadow_enabled: bool = False
     v2_mem0_chat_shadow_enabled: bool = False
+    # V3 conversational OS flags (Tech Lead frozen surface, 2026-08-07).
+    # Each flag must have a runtime read point and a test assertion.
+    v3_dialog_workspace_enabled: bool = False
+    v3_sse_enabled: bool = False
 
     # Sprint 27 semantic indexes are derived, local-only data. Canonical
     # memories and knowledge documents remain in their existing tables.
@@ -229,6 +233,8 @@ class Settings(BaseSettings):
                 self.v2_semantic_memory_enabled,
                 self.v2_mem0_shadow_enabled,
                 self.v2_mem0_chat_shadow_enabled,
+                self.v3_dialog_workspace_enabled,
+                self.v3_sse_enabled,
             )
         )
 

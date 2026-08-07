@@ -29,3 +29,4 @@ export * from "./api/context";
 export * from "./api/personality";
 export * from "./api/proactive";
 export * from "./api/computer";
+export * from "./api/dialog";
