@@ -610,6 +610,30 @@ goal/milestone/mistake/review 结构化来源 + 对话非结构化文本），
 `scripts/evaluate-memory-adoption.py` 输出采纳率
 （= 确认候选 / (确认+忽略+合并)），规则与 Qwen 分开统计。
 
+### 16. V3-1 交付记录（2026-08-07 完成）
+
+| 交付 | 证据 |
+|---|---|
+| 三张表 + 迁移 0032 | 容器库已应用；约束名与 create_all 一致；DDL 零漂移回归测试 |
+| 6 个端点 | candidates / extract / confirm / ignore / merge / query，flag 关→404 |
+| 规则抽取 | growth 目标/里程碑/任务、english 错题/复习、intelligence、investment 全覆盖 + 幂等 |
+| 本地 Qwen 抽取 | 非结构化文本（最近 10 消息 + 10 记忆）；模型不可用→degraded 空候选；敏感内容拦截 |
+| multi-hop 检索 | ≤2 hop、≤12 召回、8K token 预算、溯源；测试覆盖三跳边界 |
+| 前端候选确认卡 | 对话工作区可确认/忽略/合并/触发抽取；flag 关静默隐藏 |
+| QA 评测集 | 36 条（goal/milestone/mistake/review/intelligence/investment/conversation）+ 采纳率脚本（规则/Qwen 分列） |
+| 门禁 | `check.ps1` **exit 0**；pytest **374 passed / 0 failed**（PG 真库）；typecheck/lint 全绿；prompt 25/25 |
+| E2E | API 实测：候选→抽取→确认→查询全链路；浏览器验收（面板渲染、确认后候选消失、零报错） |
+
+**采纳率基线（首次采样）**：规则 4 确认 / 2 忽略 → 66.7%（Qwen 尚未决策）。
+按 §12.1-3 进入 2 周观察窗口，达标口径以评测集 + 确认制统计为准。
+
+**flag 状态**：`v3_memory_network_enabled` 默认关闭；集成验收后保持关闭，
+日常启用时打开并重启服务（界面候选卡随之出现）。
+
+**V3-1 遗留**：Qwen 抽取需 Ollama 模型可用时才产生候选（降级路径已验证）；
+语义索引同步依赖 Ollama（不可用时静默跳过）；批量历史回填留待 V3-2 评估；
+`research_reports` 模型/迁移约束不一致（Sprint 24 历史债务）记入待办。
+
 ### 16. V3-1 落地记录（2026-08-07，Tech Lead 收口）
 
 **状态：完成并验收**。实现、集成、真库与浏览器验证全部通过；提交
