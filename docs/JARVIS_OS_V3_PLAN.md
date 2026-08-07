@@ -505,6 +505,7 @@ memory_events
 | `GET /ui/events` SSE 基座 | Tech Lead（同上） | 事件流 + 心跳 + 快照 | §13.2 |
 | 前端 API 模块 + 类型 | Frontend API Layer | `lib/api/dialog.ts` + types | §13.3 签名冻结 |
 | ChatWorkspace 升级（卡片+SSE 消费） | Frontend Evolution | 组件/hooks | §13.3 |
+| 清理 `[module]` 空目录 | Frontend Evolution | 删除空目录（page.tsx 已移除） | — |
 | 门禁与走查 | QA（Tech Lead 集成后） | check.ps1 + Playwright | — |
 
 ### 12.3 后续阶段分配（V3-1 → V3-5，每个阶段开工前再细化）
@@ -517,6 +518,16 @@ memory_events
 | V3-4a 语音闭环 | Tool & Automation + Desktop | QA（延迟验收） |
 | V3-4b 页面收敛 | Frontend Evolution + API Layer | QA（路由矩阵） |
 | V3-5 收尾 | QA + Tech Lead | — |
+
+### 12.4 第二轮评审补充（2026-08-07 项目负责人复核）
+
+方向继续认可；§6 验收口径已与 §13 一致（轮询清零归 V3-4b）。源码复核后再补 5 项，并入各阶段验收：
+
+1. **V3-2 前置依赖显式化**：Orchestrator 触发判定依赖 Router 的 `complexity=high` 标记，而 `v2_router_shadow_enabled` 当前仍为 true（影子模式）。V3-2 开工第一步是把 RouterV2 决策接入 chat.py 真实路由（目标架构 G1，规则 + 模型双轨、可回滚），否则复杂度判定无真实数据来源，"Direct 占比 ≥95%"验收无法成立。
+2. **V3-1 前端分配补充**：抽取候选"对话内确认/合并/忽略"是 V3-1 核心体验，§12.3 未分配前端。裁定：Frontend Evolution 加入 V3-1 并行，交付"记忆候选确认卡"（复用 V3-0 卡片 schema 与审批内嵌模式）；后端抽取流水线不依赖该卡片即可先行落地。
+3. **SSE 单进程部署约束**：`services/events.py` 为进程内 asyncio 事件总线，重启/多 worker 会丢事件。当前启动方式（`python -m app` → uvicorn 单 worker）满足假设；"V3-4a 落 PG 事件表前禁止多 worker"须写为 V3 硬约束并记入 ADR。
+4. **data_version 碰撞（低优先级）**：`max(updated/created)` 微秒并发同值可能漏报版本变化；当前 10s 轮询 + 心跳兜底可接受。V3-4a 落事件表后改用严格递增事件 id，本项不阻塞 V3-0。
+5. **V3-1 评测集契约**：QA 交付物明确为 `evals/` 下 30–50 条标注样本（覆盖 goal/milestone/mistake/review 结构化来源 + 对话非结构化文本），提供"采纳率 = 确认候选 / (确认 + 忽略 + 合并)"统计脚本，规则抽取与 Qwen 抽取分别统计，作为 §12.1-3 的 2 周基线输入。
 
 ### 13. V3-0 契约冻结（2026-08-07，Tech Lead 定稿，已落地）
 
