@@ -141,11 +141,31 @@ PG 支持（设 `JARVIS_TEST_POSTGRES_URL` 时 db_session/gateway_settings 切 P
 2. ~~PG 集成 23 例真跑回填（含 ANN/HNSW 激活后的 EXPLAIN 断言）~~：
    ✅ Round 2 已闭环（PG 18.4 + pgvector 0.8.6，23/23 通过；R2/R3 不变量
    PG 3/3 通过），详见 §1.3/§3 与 MIGRATION_SPRINT_6.md §6。
-3. 四层对账：TS 命名 AgentRunStatus 联合 + Pydantic AgentRunStatus 别名
-   （strict xfail 已标记，修复后移除）。
-4. `v2_agent_core_enabled` 移除时同步删除 test_v2_feature_flags.py 对应断言。
-5. `[module]` 死路由清理纠正未删（Sprint 4 遗留，page.tsx 真实存在）。
-6. globals.css 令牌去重（Sprint 4 谨慎项，单独排期）。
+3. ~~四层对账：TS 命名 AgentRunStatus 联合 + Pydantic AgentRunStatus 别名~~：
+   ✅ Round 3 已闭环（2026-08-07，见 §9；2 个 strict xfail 已解除）。
+4. ~~`v2_agent_core_enabled` 移除~~：✅ Round 3 已移除（config/.env.example/test 同步）。
+5. ~~`[module]` 死路由清理~~：✅ Round 3 已删除（page.tsx），前端重建 + typecheck 通过。
+6. globals.css 令牌去重：Round 3 审计结论为无冗余可删（作用域主题变量为有意设计，
+   见 MIGRATION_SPRINT_6.md §7.3）。
+
+## 9. Round 3（2026-08-07，Sprint 0-6 收尾回填）
+
+- 契约四层：`generated.ts` 单一 `AgentRunStatus` 命名联合（11 值）+ Pydantic
+  别名导入（growth/research 响应改用 enums），`test_contract_four_layer.py`
+  **7/7 通过**（原 6 pass + 2 xfail）。
+- Prompt 注册表：8 个消费模块全部接入 `render_or_fallback` 并启用
+  `V2_PROMPT_REGISTRY_ENABLED=true`；开关两种状态 prompt 评测均 25/25。
+- n8n：`N8nProviderStatusResponse` 新增 `test_accounts_connected` 契约字段
+  （前端类型 + generated.ts 同步，ADR-0010 记录）。
+- 全量门禁（PG 容器真库）：`check.ps1` **exit 0**，pytest
+  **358 passed / 0 skipped / 0 xfailed**（较 Round 2 的 356/1/2：Ollama 门控
+  本次通过 + 2 xfail 解除）；security 1 个既有 WARN；prompt 25/25；
+  typecheck/lint 通过。
+- Playwright 复跑：**4 PASS / 9 FAIL**，分类与 Sprint 6 一致（4 个 Edge/CDP
+  启动抖动重试仍失败 + 5 个环境门控）；api_boundary / growth_manager /
+  memory_shadow / n8n_provider_ui 通过。
+- 受控恢复实跑完成（临时目录演练，详见 MIGRATION_SPRINT_6.md §7.6）。
+- 本轮改动含产品代码（prompts 接线、schemas、契约字段）与测试；门禁全绿后提交。
 
 ## 8. AI 辅助记录
 

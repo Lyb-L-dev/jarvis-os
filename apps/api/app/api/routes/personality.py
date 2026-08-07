@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import get_settings
 from app.db.models import User, UserPreference
 from app.db.session import get_db_session
 from app.schemas.personality import (
@@ -22,6 +23,7 @@ from app.services.personality import (
     build_personality_block,
 )
 from app.services.personality import personality_settings as read_personality_settings
+from app.services.prompts import prompt_registry_enabled, render_prompt
 
 router = APIRouter(prefix="/personality")
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
@@ -44,6 +46,12 @@ async def current_user(db: AsyncSession) -> User:
 
 def overview_for(user: User, settings: PersonalitySettings) -> PersonalityOverview:
     stored = settings.model_dump()
+    if prompt_registry_enabled(get_settings()):
+        boundaries = render_prompt("personality.boundaries").split("\n")
+        disclaimer = render_prompt("personality.disclaimer")
+    else:
+        boundaries = list(PERSONALITY_BOUNDARIES)
+        disclaimer = PERSONALITY_DISCLAIMER
     return PersonalityOverview(
         name=PERSONALITY_NAME,
         tones=list(TONES),
@@ -52,8 +60,8 @@ def overview_for(user: User, settings: PersonalitySettings) -> PersonalityOvervi
             "zh": build_personality_block("zh", stored),
             "en": build_personality_block("en", stored),
         },
-        boundaries=list(PERSONALITY_BOUNDARIES),
-        disclaimer=PERSONALITY_DISCLAIMER,
+        boundaries=boundaries,
+        disclaimer=disclaimer,
     )
 
 

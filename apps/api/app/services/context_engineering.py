@@ -27,6 +27,7 @@ from app.services.knowledge_retrieval import (
 )
 from app.services.memory import confirmed_memory_context
 from app.services.model_gateway import ChatMessage, ResolvedRoute
+from app.services.prompts import render_or_fallback
 
 TRUNCATION_NOTE = "\n…（已按上下文预算截断）"
 
@@ -148,10 +149,15 @@ async def assemble_chat_context(
         messages.append(
             ChatMessage(
                 role="system",
-                content=(
-                    "以下是用户已经确认的长期记忆，只在与当前问题相关时使用；"
-                    "若与用户最新表述冲突，以最新表述为准：\n"
-                    f"{memory_text}"
+                content=render_or_fallback(
+                    "memory.confirmed_wrapper",
+                    settings,
+                    (
+                        "以下是用户已经确认的长期记忆，只在与当前问题相关时使用；"
+                        "若与用户最新表述冲突，以最新表述为准：\n"
+                        f"{memory_text}"
+                    ),
+                    memory_context=memory_text,
                 ),
             )
         )

@@ -5,7 +5,7 @@ from time import perf_counter
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.db.models import ChatConversation, ModelCallLog, User
 from app.db.models import ChatMessage as StoredChatMessage
 from app.services.model_gateway import (
@@ -17,6 +17,7 @@ from app.services.model_gateway import (
     execute_model_call,
     resolve_route,
 )
+from app.services.prompts import render_or_fallback
 
 SUMMARY_TRIGGER_MESSAGES = 20
 SUMMARY_RAW_WINDOW = 12
@@ -46,10 +47,15 @@ def model_context_from_summary(
         context.append(
             ChatMessage(
                 role="system",
-                content=(
-                    "以下是此前对话的压缩摘要。把它作为可靠上下文使用；"
-                    "若与用户最新消息冲突，以最新消息为准。\n"
-                    f"{conversation.summary}"
+                content=render_or_fallback(
+                    "summary.context_wrapper",
+                    get_settings(),
+                    (
+                        "以下是此前对话的压缩摘要。把它作为可靠上下文使用；"
+                        "若与用户最新消息冲突，以最新消息为准。\n"
+                        f"{conversation.summary}"
+                    ),
+                    summary=conversation.summary,
                 ),
             )
         )
@@ -98,10 +104,14 @@ async def refresh_long_conversation_summary(
     summary_messages = [
         ChatMessage(
             role="system",
-            content=(
-                "你负责压缩长期对话。只保留稳定事实、用户偏好、目标、决定、"
-                "未完成事项、重要数字和后续约定；删除寒暄、重复内容和临时措辞。"
-                "使用简洁中文分点，不超过600字，不要编造。"
+            content=render_or_fallback(
+                "summary.compress",
+                settings,
+                (
+                    "你负责压缩长期对话。只保留稳定事实、用户偏好、目标、决定、"
+                    "未完成事项、重要数字和后续约定；删除寒暄、重复内容和临时措辞。"
+                    "使用简洁中文分点，不超过600字，不要编造。"
+                ),
             ),
         ),
         ChatMessage(role="user", content=transcript),

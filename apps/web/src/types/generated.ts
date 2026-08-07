@@ -3328,6 +3328,8 @@ export interface components {
              */
             paid_call_confirmed: boolean;
         };
+        /** @enum {string} */
+        AgentRunStatus: "created" | "running" | "waiting_for_input" | "waiting_for_sources" | "waiting_for_model_approval" | "waiting_for_draft_review" | "waiting_for_report_review" | "completed" | "rejected" | "cancelled" | "failed";
         /** ApprovalCenterItem */
         ApprovalCenterItem: {
             /**
@@ -5319,11 +5321,7 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "created" | "running" | "waiting_for_input" | "waiting_for_model_approval" | "waiting_for_draft_review" | "completed" | "rejected" | "cancelled" | "failed";
+            status: components["schemas"]["AgentRunStatus"];
             /** Current Step */
             current_step: string | null;
             /** Pending Kind */
@@ -6665,6 +6663,8 @@ export interface components {
             editor_exposed: boolean;
             /** Real Accounts Connected */
             real_accounts_connected: boolean;
+            /** Test Accounts Connected */
+            test_accounts_connected: boolean;
             /** External Writes Enabled */
             external_writes_enabled: boolean;
             /** Workflows */
@@ -8221,11 +8221,7 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "created" | "running" | "waiting_for_sources" | "waiting_for_model_approval" | "waiting_for_report_review" | "completed" | "rejected" | "cancelled" | "failed";
+            status: components["schemas"]["AgentRunStatus"];
             /** Current Step */
             current_step: string | null;
             /** Pending Kind */

@@ -7,6 +7,7 @@ from typing import Any, Literal
 from pydantic import Field
 
 from app.db.enums import (
+    AgentRunStatus,  # noqa: F401 — contract alias re-export for the four-layer audit
     ApprovalStatus,
     ToolApprovalStatus,
     ToolExecutionStatus,
@@ -149,6 +150,7 @@ class N8nProviderStatusResponse(APIModel):
     redis_used: bool
     editor_exposed: bool
     real_accounts_connected: bool
+    test_accounts_connected: bool
     external_writes_enabled: bool
     workflows: list[str]
     detail: str | None

@@ -33,6 +33,7 @@ from app.services.model_gateway import (
     ResolvedRoute,
     stream_model_call,
 )
+from app.services.prompts import render_or_fallback
 
 router = APIRouter()
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
@@ -140,9 +141,13 @@ async def run_evaluation(
     messages = [
         ChatMessage(
             role="system",
-            content=(
-                "你正在参加 Jarvis 的个人能力测试。严格按用户要求回答；"
-                "不知道时明确说明，不编造实时信息，不展示隐藏推理过程。"
+            content=render_or_fallback(
+                "evaluation.harness",
+                settings,
+                (
+                    "你正在参加 Jarvis 的个人能力测试。严格按用户要求回答；"
+                    "不知道时明确说明，不编造实时信息，不展示隐藏推理过程。"
+                ),
             ),
         ),
         ChatMessage(role="user", content=case.prompt),

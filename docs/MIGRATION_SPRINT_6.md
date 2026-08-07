@@ -70,21 +70,23 @@
 
 ## 5. 发布后待办（不阻塞发布，已记录）
 
-1. **死 flag 清理**：移除 `v2_agent_core_enabled`（config/.env.example/test 同步）；
-   `v2_shadow_runs_enabled` 保留决定。
-2. **AgentRun 契约四层收尾**：`generated.ts` 命名联合 + Pydantic `AgentRunStatus` 导入
-   （解除 2 个 strict xfail）。
+1. **死 flag 清理**：✅ 已移除 `v2_agent_core_enabled`（config/.env.example/test 同步，
+   2026-08-07）；`v2_shadow_runs_enabled` 保留决定不变。
+2. **AgentRun 契约四层收尾**：✅ `generated.ts` 单一 `AgentRunStatus` 命名联合 +
+   Pydantic `AgentRunStatus` 导入（growth/research 工作流响应改用 enums 别名），
+   2 个 strict xfail 已解除（见 §7）。
 3. **PG 真库复跑**：✅ 已完成（2026-08-06，详见 §6），含备份/恢复演练的
    Docker 容器路径真跑（`backup.ps1` / `verify-backup.ps1` /
    `backup-drill.ps1` 全部实跑通过，见 §6.5）。
-4. **n8n 测试账号工作流**：凭据就绪后按 `infra/n8n/workflows/README.md` 启用；
-   补 `email.draft.create` 的 catalog `confirmation_actions`；`test_accounts_connected`
-   字段（二期）。
-5. **Prompt 消费点二期切换**：personality/english/knowledge/memory/summary/
-   intelligence/chat/evaluation 共 8 处（flag 灰度，逐模块）。
-6. **前端**：`[module]` 占位页删除（路由冒烟）、globals.css 令牌去重、
-   视觉回归预拆分基线缺口、Edge headless 重试已加（4 个仍启动失败待环境复核）。
-7. **运行时性能基线**（§3）。
+4. **n8n 测试账号工作流**：契约字段 `test_accounts_connected` 已落地（§7）；
+   剩余外部步骤=凭据就绪后按 `infra/n8n/workflows/README.md` 启用（置 `available=True`、
+   字段置 true）；`email.draft.create` 的 catalog `confirmation_actions` 随激活补齐。
+5. **Prompt 消费点二期切换**：✅ 8 处（personality/english/knowledge/memory/summary/
+   intelligence/chat/evaluation）全部接入注册表，`V2_PROMPT_REGISTRY_ENABLED=true`（§7）。
+6. **前端**：✅ `[module]` 占位页已删除（构建/类型检查通过）；globals.css 令牌经审计
+   无冗余可删（作用域主题变量为有意设计）；视觉回归预拆分基线缺口维持记录；
+   Edge headless 重试已加（4 个仍为环境抖动，见 §7 Playwright 复跑）。
+7. **运行时性能基线**：✅ 已采集（§7.6）。
 
 ---
 
@@ -188,3 +190,88 @@ pgvector **0.8.6**（`andreiramani/pgvector_pgsql_windows` 官方 Windows 构建
   符合设计）。
 - 原生 PG 18.4 保留为验证/备用环境（数据为 8/4 快照 + 0031 迁移，未接应用）。
 - 全栈复跑剩余环境门控：Ollama 语义、n8n 工作流、Windows 提醒、Edge headless。
+
+---
+
+## 7. Sprint 0-6 收尾项完成记录（2026-08-07）
+
+### 7.1 git 卫生
+
+- 删除已合入 main 的遗留分支 `sprint-1..6` 与空分支 `feat/frontend-api`
+  （`git branch -d`，安全删除）；`dev` 快进到 `main`（当前 main = dev）。
+
+### 7.2 死 flag 清理
+
+- 移除 `v2_agent_core_enabled`（config.py 字段 + `any_v2_feature_enabled` 元组 +
+  `test_v2_feature_flags.py` 断言 + `.env.example`）。该 flag 无任何运行时读取点。
+
+### 7.3 前端遗留
+
+- 删除死路由 `apps/web/src/app/[module]/page.tsx`（全仓库无链接/引用），重建
+  Next.js 产物后 typecheck/lint 通过，路由清单无 `[module]`。
+- `globals.css` 令牌去重：全量扫描 153 处自定义属性声明，重复项均为各组件作用域
+  的主题变量（orb/agent 分色），属有意设计；未发现可安全删除的冗余块（文件无整段
+  重复，前后半段哈希不同）。结论：无需改动，防回归由视觉基线覆盖。
+
+### 7.4 AgentRun 契约四层收尾（解除 2 个 strict xfail）
+
+- `app/schemas/growth.py` / `research.py`：工作流响应 `status` 字段由本地 9 值
+  Literal 改为 `app.db.enums.AgentRunStatus`（11 值规范别名）。
+- `app/schemas/tool.py`：契约再导出 `AgentRunStatus`。
+- 重新生成 `generated.ts`：新增命名联合
+  `AgentRunStatus: "created" | ... | "failed"`（11 值），两个工作流响应的
+  `status` 字段改为 `$ref` 引用。
+- `test_contract_four_layer.py`：删除过渡性内联联合测试与两个 xfail 标记，
+  更新 docstring。契约测试 **7/7 通过**。
+
+### 7.5 Prompt 消费点二期切换（8 个模块全部接入注册表并启用）
+
+- 新增 `render_or_fallback` 消费点：personality（block/chat_system/coach_line +
+  route boundaries/disclaimer）、english（coach/summary_analysis/rewrite×2）、
+  knowledge（capture/insight/retrieval_context）、memory（mem0_instructions/
+  qwen_extract/confirmed_wrapper×2）、summary（context_wrapper/compress）、
+  intelligence（editor/editor_user）、evaluation（harness）。
+- 开关关闭时 fallback=原文本逐字不变；开关开启时逐模块验证字节一致
+  （personality/english 抽样 MATCH；prompt 评测 25/25 两种开关状态均通过）。
+- `V2_PROMPT_REGISTRY_ENABLED=true`（.env 与 .env.example）。
+
+### 7.6 n8n 契约变更 + vault 恢复实跑
+
+- `N8nProviderStatusResponse` 新增 `test_accounts_connected` 字段
+  （schema/provider/测试/前端类型/`generated.ts` 同步；ADR-0010 记录）。
+  当前恒 `false`；测试账号激活时置 true，`real_accounts_connected` 保持 false。
+- 受控恢复实跑（临时目录演练，不触碰真实备份目录与真实 vault）：
+  `backup.ps1` → 当前状态备份（0031+vault 29 文件）→ `restore-backup.ps1`
+  （verify → safety backup → DB 交换 jarvis_before_* → vault 恢复到临时目录）。
+  恢复后验证 **71 表 / alembic 0031 / 数据 1-51-10-6-4 / vault 15 个文件**；
+  演练临时库与目录已清理（`.runtime/restore-drill` 保留产物备查）。
+
+### 7.7 运行时性能基线（首次采集）
+
+| 项 | 值 |
+|---|---|
+| GPU | RTX 3050 Laptop，885 MiB / 4096 MiB，0%（Ollama 无模型常驻） |
+| 后端 API 进程 | ~155 MB（python） |
+| 前端 | ~90 MB（node next start） |
+| Browser Worker / n8n node | ~63 / ~42 MB |
+| Windows Companion | ~36 MB |
+| 容器 | postgres 89 MiB；n8n 395 MiB；ingress 37 MiB；neo4j 619 MiB |
+| API 延迟（本机） | health 8–40ms；personality/chat/knowledge/approval 15–24ms |
+
+### 7.8 门禁结果（2026-08-07，PG 容器真库）
+
+- `check.ps1` **exit 0**：pytest **358 passed / 0 skipped / 0 xfailed**
+  （含 PG 集成 23 + 不变量 3 + workflow PG 1；Ollama 门控本次通过）；
+  security 通过（1 个既有 .env ACL WARN）；prompt & policy 评测 **25/25**；
+  backup-drill dry-run 通过；前端 typecheck/lint 通过。
+- Playwright 验收套件复跑：**PASS 4 / FAIL 9**——4 个 Edge/CDP 启动抖动
+  （重试 3 次仍失败，环境性）+ 5 个环境门控（无待审批项、工作流等待模型授权、
+  语义索引未重建、本地模型未加载渲染、付费确认按钮禁用态）；无本次改动引入的
+  确定性回归（api_boundary/growth_manager/memory_shadow/n8n_provider_ui 均通过）。
+
+### 7.9 仍待外部条件的项
+
+- n8n 测试账号激活（Google Calendar/Gmail 凭据；代码与契约已就绪）。
+- Ollama 模型常驻加载后的语义/研究全栈复跑（服务在跑，模型未常驻）。
+- Windows 提醒真机验收（桌面单测本地已通过）。
+- 原生 PG 18.4 仅保留为备用环境（数据为旧快照，未接应用）。

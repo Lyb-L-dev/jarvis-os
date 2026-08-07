@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.db.models import (
     EnglishMessage,
     EnglishMistake,
@@ -19,6 +20,7 @@ from app.db.models import (
 )
 from app.services.model_gateway import ChatMessage
 from app.services.notifications import SHANGHAI, cancel_scheduled_job, schedule_reminder
+from app.services.prompts import render_or_fallback
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,7 +61,7 @@ def coach_system_prompt(
         if personality_line and personality_line.strip()
         else ""
     )
-    return (
+    fallback = (
         f"{persona}You are Jarvis English Coach. Keep the conversation primarily in English, "
         "warm, concise, and appropriate for the learner's level. Ask one useful "
         "follow-up question so the conversation can continue. "
@@ -72,6 +74,15 @@ def coach_system_prompt(
         '"explanation":"brief Chinese explanation","cefr":"A1|A2|B1|B2|C1|C2"}]}. '
         "Never invent an error that is not present in the user's latest message."
     )
+    return render_or_fallback(
+        "english.coach",
+        get_settings(),
+        fallback,
+        persona=persona,
+        scenario=scenario,
+        level=session.level,
+        mode_instruction=mode_instruction,
+    )
 
 
 def summary_analysis_prompt(session: EnglishSession, user_messages: list[str]) -> list[ChatMessage]:
@@ -81,16 +92,21 @@ def summary_analysis_prompt(session: EnglishSession, user_messages: list[str]) -
     return [
         ChatMessage(
             role="system",
-            content=(
-                "You are Jarvis English Coach reviewing a completed session. "
-                "Return exactly one JSON object and no markdown. "
-                'Schema: {"reply":"Chinese session summary with strengths and '
-                'one next focus","corrections":[{"original":"exact learner sentence",'
-                '"corrected":"natural correction","category":"grammar|word_choice|'
-                'tense|agreement|article|preposition|style","explanation":"brief '
-                'Chinese explanation","cefr":"A1|A2|B1|B2|C1|C2"}]}. '
-                "Include at most five important, real mistakes. "
-                f"Learner level: {session.level}."
+            content=render_or_fallback(
+                "english.summary_analysis",
+                get_settings(),
+                (
+                    "You are Jarvis English Coach reviewing a completed session. "
+                    "Return exactly one JSON object and no markdown. "
+                    'Schema: {"reply":"Chinese session summary with strengths and '
+                    'one next focus","corrections":[{"original":"exact learner sentence",'
+                    '"corrected":"natural correction","category":"grammar|word_choice|'
+                    'tense|agreement|article|preposition|style","explanation":"brief '
+                    'Chinese explanation","cefr":"A1|A2|B1|B2|C1|C2"}]}. '
+                    "Include at most five important, real mistakes. "
+                    f"Learner level: {session.level}."
+                ),
+                level=session.level,
             ),
         ),
         ChatMessage(role="user", content=f"Transcript:\n{transcript}"),
@@ -342,7 +358,12 @@ async def ensure_review(
             EnglishReview.status == "scheduled",
         )
     )
-    prompt = f"请用正确的英语重写：{mistake.original_text}"
+    prompt = render_or_fallback(
+        "english.rewrite",
+        get_settings(),
+        f"请用正确的英语重写：{mistake.original_text}",
+        original_text=mistake.original_text,
+    )
     if review is None:
         review = EnglishReview(
             user_id=mistake.user_id,

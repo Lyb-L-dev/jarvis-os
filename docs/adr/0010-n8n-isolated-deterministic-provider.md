@@ -86,3 +86,8 @@ n8n 自带审计会把三个内部 Webhook 标记为“Authentication=None”。
 4. **启用前置**：测试账号就绪后按 `infra/n8n/workflows/README.md` 校验节点 schema →
    替换凭据占位 → bump `JARVIS_N8N_WORKFLOW_VERSION`（bootstrap 已幂等化，不会重复发布）→
    置 `available=True` 并更新本 ADR 的“后果”节。
+5. **状态面契约（2026-08-07 收尾）**：`N8nProviderStatusResponse` 新增
+   `test_accounts_connected` 字段，与 `real_accounts_connected` 区分“测试账号已连接”
+   与“真实账号已连接”。当前恒为 `false`（凭据占位未配置）；测试账号激活后该字段
+   置 `true`，`real_accounts_connected` 仍保持 `false`，直至真实账号按 #12/#13
+   R2 审批路径接入。前端类型与 `generated.ts` 已同步。

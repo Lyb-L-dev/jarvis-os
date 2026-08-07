@@ -15,7 +15,7 @@ from typing import Protocol
 import httpx
 from sqlalchemy.engine import make_url
 
-from app.core.config import PROJECT_ROOT, Settings
+from app.core.config import PROJECT_ROOT, Settings, get_settings
 from app.services.memory import (
     infer_memory_type,
     normalized_content,
@@ -30,6 +30,7 @@ from app.services.model_gateway import (
     execute_model_call,
     resolve_route,
 )
+from app.services.prompts import render_or_fallback
 from app.services.semantic_index import ollama_root_url
 
 ALLOWED_MEMORY_TYPES = {
@@ -180,7 +181,15 @@ class QwenMemoryEngine:
             settings,
             route,
             [
-                ChatMessage(role="system", content=QWEN_SYSTEM_PROMPT),
+                ChatMessage(
+                    role="system",
+                    content=render_or_fallback(
+                        "memory.qwen_extract",
+                        get_settings(),
+                        QWEN_SYSTEM_PROMPT,
+                        mem0_instructions=MEM0_CUSTOM_INSTRUCTIONS,
+                    ),
+                ),
                 ChatMessage(role="user", content=text[:8_000]),
             ],
             max_tokens=1_000,
@@ -262,7 +271,11 @@ def _build_mem0_client(settings: Settings) -> object:
             {
                 "version": "v1.1",
                 "history_db_path": str(history_path),
-                "custom_instructions": MEM0_CUSTOM_INSTRUCTIONS,
+                "custom_instructions": render_or_fallback(
+                    "memory.mem0_instructions",
+                    get_settings(),
+                    MEM0_CUSTOM_INSTRUCTIONS,
+                ),
                 "llm": {
                     "provider": "ollama",
                     "config": {
@@ -328,7 +341,11 @@ def _run_mem0_session(
                 "source_attribution": source_attribution,
             },
             infer=True,
-            prompt=MEM0_CUSTOM_INSTRUCTIONS,
+            prompt=render_or_fallback(
+                "memory.mem0_instructions",
+                get_settings(),
+                MEM0_CUSTOM_INSTRUCTIONS,
+            ),
         )
     finally:
         _close_mem0_client(client)

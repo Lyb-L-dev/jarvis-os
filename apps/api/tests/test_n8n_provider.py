@@ -109,6 +109,7 @@ async def test_disabled_provider_status_is_safe_and_offline() -> None:
     assert result["signed_webhooks"] is True
     assert result["external_writes_enabled"] is False
     assert result["real_accounts_connected"] is False
+    assert result["test_accounts_connected"] is False
 
 
 async def test_calendar_read_and_email_draft_are_r0_r1_without_side_effects(

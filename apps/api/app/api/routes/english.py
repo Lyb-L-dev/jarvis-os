@@ -61,6 +61,7 @@ from app.services.model_gateway import (
     resolve_route,
 )
 from app.services.personality import coach_persona_line
+from app.services.prompts import render_or_fallback
 
 router = APIRouter()
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
@@ -658,7 +659,12 @@ async def update_mistake(
     )
     for review in scheduled_reviews:
         review.expected_answer = mistake.corrected_text
-        review.prompt = f"请用正确的英语重写：{mistake.original_text}"
+        review.prompt = render_or_fallback(
+            "english.rewrite",
+            get_settings(),
+            f"请用正确的英语重写：{mistake.original_text}",
+            original_text=mistake.original_text,
+        )
     await db.commit()
     await db.refresh(mistake)
     return mistake_response(mistake)

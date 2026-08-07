@@ -7,11 +7,9 @@ compares:
 - ``app.schemas.tool`` / ``app.schemas.memory`` imported aliases (Pydantic);
 - ``apps/web/src/types/generated.ts`` named unions (TS layer).
 
-Known Sprint 6 gaps (documented, ``strict=True`` xfail so a fix flips the test
-to XPASS and forces removal of the marker):
-- TS layer has no single named ``AgentRunStatus`` union (two inline unions are
-  complementary subsets);
-- no Pydantic schema imports ``AgentRunStatus`` yet.
+The AgentRun status contract was closed in the Sprint 0-6 wrap-up: the TS layer
+now has a single named ``AgentRunStatus`` union and Pydantic schemas import the
+enum alias (growth/research workflow responses use ``app.db.enums.AgentRunStatus``).
 """
 
 from __future__ import annotations
@@ -19,8 +17,6 @@ from __future__ import annotations
 import importlib.util
 import re
 from pathlib import Path
-
-import pytest
 
 from app.db import enums
 from app.schemas import memory as memory_schema
@@ -114,28 +110,6 @@ def test_ts_named_unions_equal_enum_values() -> None:
     assert unions["MemoryStatus"] == set(enums.MemoryStatusValues)
 
 
-def test_ts_can_express_all_agent_run_values() -> None:
-    text = GENERATED_TS.read_text(encoding="utf-8")
-    inline_sets: list[set[str]] = []
-    for match in re.finditer(
-        r'^\s*status: "created" \| "running"[^;]*;',
-        text,
-        flags=re.MULTILINE,
-    ):
-        inline_sets.append(set(re.findall(r"\"([^\"]+)\"", match.group(0))))
-
-    assert inline_sets
-    union = set().union(*inline_sets)
-    assert union == set(enums.AgentRunStatusValues)
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "TS 层未收敛：generated.ts 缺少单一命名 AgentRunStatus 联合类型"
-        "（两个内联联合互为补集）；修复后应移除本标记"
-    ),
-)
 def test_ts_has_named_agent_run_status_union() -> None:
     text = GENERATED_TS.read_text(encoding="utf-8")
     unions = _ts_named_unions(text)
@@ -143,12 +117,5 @@ def test_ts_has_named_agent_run_status_union() -> None:
     assert unions["AgentRunStatus"] == set(enums.AgentRunStatusValues)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Pydantic 层未收敛：无 schema 从 app.db.enums 导入 AgentRunStatus；"
-        "修复后应移除本标记"
-    ),
-)
 def test_pydantic_has_agent_run_status_alias() -> None:
     assert hasattr(tool_schema, "AgentRunStatus")

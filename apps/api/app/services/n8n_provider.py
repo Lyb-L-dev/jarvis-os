@@ -152,6 +152,7 @@ async def n8n_provider_status(settings: Settings) -> dict[str, Any]:
         "redis_used": False,
         "editor_exposed": False,
         "real_accounts_connected": False,
+        "test_accounts_connected": False,
         "external_writes_enabled": False,
         "workflows": [],
         "detail": None,

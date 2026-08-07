@@ -123,6 +123,7 @@ export type N8nProviderStatus = {
   redis_used: boolean;
   editor_exposed: boolean;
   real_accounts_connected: boolean;
+  test_accounts_connected: boolean;
   external_writes_enabled: boolean;
   workflows: string[];
   detail?: string | null;

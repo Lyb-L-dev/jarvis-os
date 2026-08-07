@@ -50,7 +50,6 @@ class Settings(BaseSettings):
 
     # Jarvis OS v2 execution paths remain default-off. The Sprint 24 shadow
     # router is local/read-only and never changes the existing model route.
-    v2_agent_core_enabled: bool = False
     v2_router_shadow_enabled: bool = True
     v2_router_enforcement_enabled: bool = False
     v2_prompt_registry_enabled: bool = False
@@ -215,7 +214,6 @@ class Settings(BaseSettings):
     def any_v2_feature_enabled(self) -> bool:
         return any(
             (
-                self.v2_agent_core_enabled,
                 self.v2_router_shadow_enabled,
                 self.v2_router_enforcement_enabled,
                 self.v2_prompt_registry_enabled,

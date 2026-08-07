@@ -6,20 +6,10 @@ from typing import Any, Literal
 
 from pydantic import Field, field_validator, model_validator
 
+from app.db.enums import AgentRunStatus
 from app.schemas.common import APIModel
 from app.schemas.intelligence import NewsCategory
 
-ResearchWorkflowStatus = Literal[
-    "created",
-    "running",
-    "waiting_for_sources",
-    "waiting_for_model_approval",
-    "waiting_for_report_review",
-    "completed",
-    "rejected",
-    "cancelled",
-    "failed",
-]
 ResearchModelPreference = Literal["auto", "deep", "mimo", "local"]
 
 
@@ -142,7 +132,7 @@ class ResearchRequestResponse(APIModel):
 
 class ResearchWorkflowRunResponse(APIModel):
     id: uuid.UUID
-    status: ResearchWorkflowStatus
+    status: AgentRunStatus
     current_step: str | None
     pending_kind: str | None
     pending_payload: dict[str, Any] | None

@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.config import get_settings
 from app.db.models import User
+from app.services.prompts import render_or_fallback
 
 PERSONALITY_NAME = "Jarvis"
 TONES = ("balanced", "casual", "formal")
@@ -93,7 +95,7 @@ def build_personality_block(language: str, settings: dict[str, Any]) -> str:
             if rules
             else ""
         )
-        return (
+        fallback = (
             "You are Jarvis, the user's long-term personal AI assistant, not a generic chatbot. "
             f"Address the user as “{nickname}” when a name is natural. "
             f"{_TONE_EN[tone]} "
@@ -109,12 +111,22 @@ def build_personality_block(language: str, settings: dict[str, Any]) -> str:
             "openly."
             f"{rules_block}"
         )
+        return render_or_fallback(
+            "personality.block",
+            get_settings(),
+            fallback,
+            language=language,
+            nickname=nickname,
+            tone_line=_TONE_EN[tone],
+            emoji_rule=_emoji_rule(settings, zh=False),
+            rules_block=rules_block,
+        )
     rules_block = (
         "\n用户最新要求（优先级最高）：\n" + "\n".join(f"- {rule}" for rule in rules)
         if rules
         else ""
     )
-    return (
+    fallback = (
         "你是 Jarvis，用户的长期个人 AI 助手，不是通用聊天机器人。"
         f"称呼：使用「{nickname}」称呼用户；不合适时用“你”。"
         f"{_TONE_ZH[tone]}"
@@ -125,6 +137,16 @@ def build_personality_block(language: str, settings: dict[str, Any]) -> str:
         "边界（永远优先于以上人格）：事实、安全规则和用户最新要求优先；"
         "不执行投资交易、支付、凭据操作或不可恢复删除；犯错时直接承认并更正。"
         f"{rules_block}"
+    )
+    return render_or_fallback(
+        "personality.block",
+        get_settings(),
+        fallback,
+        language=language,
+        nickname=nickname,
+        tone_line=_TONE_ZH[tone],
+        emoji_rule=_emoji_rule(settings, zh=True),
+        rules_block=rules_block,
     )
 
 
@@ -137,19 +159,36 @@ def build_system_prompt(user: User, *, language: str = "zh") -> str:
         else "未设置"
     )
     settings = personality_settings(user)
-    return (
+    personality_block = build_personality_block(language, settings)
+    fallback = (
         f"你是 {PERSONALITY_NAME}，用户的长期个人 AI 助手。默认使用中文，"
         "除非用户明确要求其他语言。\n"
         f"用户姓名：{user.name}。职业目标：{goals}。当前技能：{skills}。\n"
-        f"{build_personality_block(language, settings)}"
+        f"{personality_block}"
+    )
+    return render_or_fallback(
+        "personality.chat_system",
+        get_settings(),
+        fallback,
+        name=user.name,
+        goals=goals,
+        skills=skills,
+        personality_block=personality_block,
     )
 
 
 def coach_persona_line(settings: dict[str, Any]) -> str:
     tone = _tone(settings)
-    return (
+    fallback = (
         f"You are {PERSONALITY_NAME}, a warm, concise, honest English coach. "
         f"{_TONE_EN[tone]} {_emoji_rule(settings, zh=False)} "
         "Never invent errors, never claim completed actions, and always treat the "
         "learner's latest message as the highest-priority input."
+    )
+    return render_or_fallback(
+        "personality.coach_line",
+        get_settings(),
+        fallback,
+        tone_line=_TONE_EN[tone],
+        emoji_rule=_emoji_rule(settings, zh=False),
     )

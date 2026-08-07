@@ -4,7 +4,6 @@ from app.core.config import Settings
 def test_only_read_only_shadow_router_is_enabled_by_default() -> None:
     settings = Settings(_env_file=None)
 
-    assert settings.v2_agent_core_enabled is False
     assert settings.v2_router_shadow_enabled is True
     assert settings.v2_shadow_runs_enabled is False
     assert settings.v2_policy_enforcement_enabled is False

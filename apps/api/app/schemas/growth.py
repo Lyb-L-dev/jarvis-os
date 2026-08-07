@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from pydantic import Field, model_validator
 
+from app.db.enums import AgentRunStatus
 from app.schemas.common import APIModel
 
 GrowthArea = Literal[
@@ -18,17 +19,6 @@ GrowthArea = Literal[
 GoalStatus = Literal["active", "paused", "completed", "cancelled"]
 MilestoneStatus = Literal["pending", "in_progress", "completed", "cancelled"]
 TaskStatus = Literal["todo", "in_progress", "paused", "completed", "cancelled"]
-GrowthWorkflowStatus = Literal[
-    "created",
-    "running",
-    "waiting_for_input",
-    "waiting_for_model_approval",
-    "waiting_for_draft_review",
-    "completed",
-    "rejected",
-    "cancelled",
-    "failed",
-]
 GrowthModelPreference = Literal["auto", "deep", "mimo", "local"]
 
 
@@ -337,7 +327,7 @@ class GrowthWorkflowRequestResponse(APIModel):
 
 class GrowthWorkflowRunResponse(APIModel):
     id: uuid.UUID
-    status: GrowthWorkflowStatus
+    status: AgentRunStatus
     current_step: str | None
     pending_kind: str | None
     pending_payload: dict[str, Any] | None

@@ -79,6 +79,7 @@ from app.services.model_gateway import (
     stream_model_call,
 )
 from app.services.personality import build_system_prompt
+from app.services.prompts import render_or_fallback
 
 router = APIRouter()
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
@@ -282,10 +283,15 @@ async def append_confirmed_memories(
         model_messages.append(
             ChatMessage(
                 role="system",
-                content=(
-                    "以下是用户已经确认的长期记忆，只在与当前问题相关时使用；"
-                    "若与用户最新表述冲突，以最新表述为准：\n"
-                    f"{memory_context}"
+                content=render_or_fallback(
+                    "memory.confirmed_wrapper",
+                    settings,
+                    (
+                        "以下是用户已经确认的长期记忆，只在与当前问题相关时使用；"
+                        "若与用户最新表述冲突，以最新表述为准：\n"
+                        f"{memory_context}"
+                    ),
+                    memory_context=memory_context,
                 ),
             )
         )
