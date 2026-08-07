@@ -572,3 +572,40 @@ SSE 快照+心跳测试通过；契约测试与全量回归通过；首页并行
 
 **V3-0 未做（留给后续阶段）**：首页并行 10 请求清零（V3-4）；SSE 事件持久化（V3-4a）；
 八个"对话化为主"页面摘要卡片（V3-4b，DialogCard 契约已预留）。
+
+### 15. V3-1 契约冻结（2026-08-07，Tech Lead 定稿）
+
+**Feature Flag**：`v3_memory_network_enabled`（config.py，默认关闭；所有
+`/api/v1/memory-network/*` 端点 flag 关闭时返回 404）。
+
+**数据表（已落地，迁移 0032）**：`memory_entities` / `memory_relations` /
+`memory_events`——模型 `app/db/models/memory_network.py`，约束名与 create_all
+一致（ck_<table>_<name>）；软删除（deleted_at）/ 双时态（valid_from/until、
+happened_at/ingested_at）/ 溯源（source_kind+source_id）/ cloud_allowed /
+候选不自动入上下文（status=candidate 默认）。
+
+**API 契约（Memory Engineer 实现）**：
+
+| 端点 | 行为 |
+|---|---|
+| `GET /memory-network/candidates` | 候选列表（entity/relation/event，按 status 过滤） |
+| `POST /memory-network/extract` | 规则优先 + 本地 Qwen 抽取，写入候选；返回计数 |
+| `POST /memory-network/candidates/{id}/confirm` | 激活（入上下文）；实体同步 pgvector 语义索引 |
+| `POST /memory-network/candidates/{id}/ignore` | 忽略/归档，不删除 |
+| `POST /memory-network/candidates/{id}/merge?into=` | 合并进已有实体（源实体置 merged，关系迁移） |
+| `GET /memory-network/query?q=&limit=` | multi-hop 检索（≤2 hop、召回 ≤12、8K token 预算），返回实体/关系/事件 + 溯源 |
+
+**抽取约束**：结构化来源（growth 目标/里程碑/任务事件、english 错题/复习、
+intelligence 收藏、investment 理由、已确认记忆）走规则；非结构化文本走本地
+Qwen（复用 model_gateway 本地路由，默认不上云）；模型不可用时静默返回空候选，
+不产生半成品。确认制：候选必须经 confirm 才可被检索/进入上下文。
+
+**验收（V3-1）**：候选确认制生效（未确认不入上下文）；10 个 multi-hop 检索
+用例通过；云端仅接收 cloud_allowed 内容；删除/停用传播（entity archive →
+relation/event 级联可见性）；规则抽取与 Qwen 抽取分别统计采纳率（QA 评测集）；
+`check.ps1` 全绿；关 flag 后旧检索路径行为不变。
+
+**QA 评测集契约**：`evals/memory-network-eval-set.jsonl`（30–50 条，覆盖
+goal/milestone/mistake/review 结构化来源 + 对话非结构化文本），
+`scripts/evaluate-memory-adoption.py` 输出采纳率
+（= 确认候选 / (确认+忽略+合并)），规则与 Qwen 分开统计。

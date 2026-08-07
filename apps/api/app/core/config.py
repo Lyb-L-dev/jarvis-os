@@ -69,6 +69,7 @@ class Settings(BaseSettings):
     # Each flag must have a runtime read point and a test assertion.
     v3_dialog_workspace_enabled: bool = False
     v3_sse_enabled: bool = False
+    v3_memory_network_enabled: bool = False
 
     # Sprint 27 semantic indexes are derived, local-only data. Canonical
     # memories and knowledge documents remain in their existing tables.
@@ -235,6 +236,7 @@ class Settings(BaseSettings):
                 self.v2_mem0_chat_shadow_enabled,
                 self.v3_dialog_workspace_enabled,
                 self.v3_sse_enabled,
+                self.v3_memory_network_enabled,
             )
         )
 

@@ -48,6 +48,11 @@ from app.db.models.knowledge import (
     KnowledgeVaultConfig,
 )
 from app.db.models.memory import Memory, MemoryRevision
+from app.db.models.memory_network import (
+    MemoryEntity,
+    MemoryEvent,
+    MemoryRelation,
+)
 from app.db.models.memory_shadow import MemoryShadowCandidate, MemoryShadowRun
 from app.db.models.monitoring import MonitorEvent, MonitorRule
 from app.db.models.notification import (
@@ -96,6 +101,9 @@ __all__ = [
     "ModelCallLog",
     "Memory",
     "MemoryRevision",
+    "MemoryEntity",
+    "MemoryEvent",
+    "MemoryRelation",
     "MemoryShadowCandidate",
     "MemoryShadowRun",
     "MonitorEvent",
