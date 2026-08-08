@@ -123,7 +123,6 @@ export function WorldView() {
       .atmosphereColor("#22d3ee")
       .atmosphereAltitude(0.16)
       .showGraticules(true)
-      .graticulesColor("rgba(34,211,238,0.14)")
       .showGlobe(true)
       .globeImageUrl(null)
       .pointOfView({ lat: 18, lng: 10, altitude: 2.3 })
