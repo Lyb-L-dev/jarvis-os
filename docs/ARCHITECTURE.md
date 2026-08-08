@@ -60,13 +60,13 @@ flowchart LR
 - 语音人格只改变播报文本与语速，不改变提醒原文和数据库记录；
 - 中文、英文和中英混合文本不调用 LLM，而是由本地字符级规则分段；
 - 本地合成不发送提醒内容到互联网；
-- 两个模型固定使用 CPU，因此不会与本地 Qwen 争用 RTX 3050 的显存。
+- 两个模型固定使用 CPU，因此不会与本地 Qwen 争用 独立显卡 的显存。
 
 ## 平板专用终端
 
 ```mermaid
 flowchart LR
-    PAD["小米平板 5 Pro\nChrome / PWA"] -->|"USB ADB Reverse\n设备 127.0.0.1"| LOOPBACK["电脑 127.0.0.1"]
+    PAD["平板\nChrome / PWA"] -->|"USB ADB Reverse\n设备 127.0.0.1"| LOOPBACK["电脑 127.0.0.1"]
     LOOPBACK --> WEB["Next.js :3000 /tablet"]
     LOOPBACK --> API["FastAPI :8000"]
     API --> CORE["模型 / 数据库 / 记忆 / 提醒"]

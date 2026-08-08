@@ -66,7 +66,7 @@ def render(black_bg: bool, size: int = SIZE) -> Image.Image:
 
 
 def main() -> None:
-    outdir = sys.argv[1] if len(sys.argv) > 1 else r"E:\贾维斯\docs\design"
+    outdir = sys.argv[1] if len(sys.argv) > 1 else r"docs/design"
     os.makedirs(outdir, exist_ok=True)
 
     render(True).save(os.path.join(outdir, "jarvis-logomark.png"))

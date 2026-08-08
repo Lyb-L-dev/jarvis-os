@@ -85,7 +85,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-voice.ps1
 ```
 
 脚本会安装本地语音运行时，并下载中文男声和美式英语男声。模型保存在
-`.data\voice`，合成固定使用 CPU，不占用 RTX 3050 的 4 GB 显存。项目路径包含
+`.data\voice`，合成固定使用 CPU，不占用 独立显卡 的 4 GB 显存。项目路径包含
 中文时，脚本还会建立 `C:\tmp\jarvis-voice-model` 和
 `C:\tmp\jarvis-voice-en-model` 两个兼容目录联接；它们不复制、移动或删除原始
 模型。
@@ -121,7 +121,7 @@ API Key。
 | 设置与数据保护 | `http://127.0.0.1:3000/settings` |
 | 平板专用终端 | `http://127.0.0.1:3000/tablet` |
 
-## 连接小米平板专用终端
+## 连接平板专用终端
 
 平板通过 USB 显示 Jarvis，电脑仍负责模型推理、数据保存、Obsidian、提醒和
 API Key 管理。此方式不会把 Jarvis 开放到局域网。
@@ -141,7 +141,7 @@ powershell -ExecutionPolicy Bypass -File `
 
 ### 平板设置
 
-1. 在小米平板“设置”中开启开发者选项；
+1. 在平板“设置”中开启开发者选项；
 2. 在开发者选项中开启“USB 调试”；
 3. 使用支持数据传输的 USB 线连接电脑；
 4. 平板出现“允许 USB 调试”时，核对这是自己的电脑后再允许；
@@ -373,7 +373,7 @@ Jarvis 不会在后台自动提炼历史草稿，也不会自动接受任何候�
 `backups`；当前电脑对应：
 
 ```text
-E:\贾维斯\backups
+.\backups
 ```
 
 同一块硬盘上的备份不能抵御整块硬盘损坏。重要阶段应把已验证的 `.dump`

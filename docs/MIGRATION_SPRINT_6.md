@@ -250,7 +250,7 @@ pgvector **0.8.6**（`andreiramani/pgvector_pgsql_windows` 官方 Windows 构建
 
 | 项 | 值 |
 |---|---|
-| GPU | RTX 3050 Laptop，885 MiB / 4096 MiB，0%（Ollama 无模型常驻） |
+| GPU | 独立显卡 Laptop，885 MiB / 4096 MiB，0%（Ollama 无模型常驻） |
 | 后端 API 进程 | ~155 MB（python） |
 | 前端 | ~90 MB（node next start） |
 | Browser Worker / n8n node | ~63 / ~42 MB |

@@ -336,7 +336,7 @@ def render(variant: str, size: int = OUT) -> Image.Image:
 
 
 def main() -> None:
-    outdir = sys.argv[1] if len(sys.argv) > 1 else r"E:\贾维斯\docs\design"
+    outdir = sys.argv[1] if len(sys.argv) > 1 else r"docs/design"
     os.makedirs(outdir, exist_ok=True)
 
     variants = ["reactor", "aurora", "network"]

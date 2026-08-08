@@ -29,11 +29,11 @@ type WizardForm = {
 };
 
 const initialForm: WizardForm = {
-  name: "刘烨宝",
-  major: "数据科学与大数据技术",
-  careerGoals: "AI应用工程师, Agent开发方向",
-  currentSkills: "Python, RAG基础, n8n, LLM应用",
-  weaknesses: "英语学习困难, 缺少长期规划, 信息获取效率低",
+  name: "",
+  major: "",
+  careerGoals: "",
+  currentSkills: "",
+  weaknesses: "",
   dailyHours: 4,
   aiAgentInterest: "high",
   technologyInterest: "medium_high",

@@ -170,7 +170,7 @@ def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFo
 
 
 def main() -> None:
-    outdir = sys.argv[1] if len(sys.argv) > 1 else r"E:\贾维斯\docs\design"
+    outdir = sys.argv[1] if len(sys.argv) > 1 else r"docs/design"
     os.makedirs(outdir, exist_ok=True)
 
     mark = render_mark(512)

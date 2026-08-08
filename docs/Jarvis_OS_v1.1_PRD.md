@@ -38,7 +38,7 @@
 
 | 项目 | 当前条件 |
 |---|---|
-| GPU | NVIDIA RTX 3050，4GB 显存 |
+| GPU | NVIDIA 独立显卡，4GB 显存 |
 | 内存 | 16GB |
 | 本地模型 | Ollama + Qwen3 4B |
 | 主云端模型 | Xiaomi MiMo Token Plan，每月约 41 亿 Token |
@@ -104,7 +104,7 @@ Jarvis OS 采用：
 ```yaml
 education:
   level: 本科
-  major: 数据科学与大数据技术
+  major: 待填写
 
 career_goal:
   primary:

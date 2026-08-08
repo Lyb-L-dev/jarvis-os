@@ -14,8 +14,8 @@ OUT = 512
 U = CANVAS / 64
 
 GEIST_CANDIDATES = [
-    r"E:\贾维斯\apps\web\node_modules\geist\dist\fonts\geist-sans\GeistSans-SemiBold.ttf",
-    r"E:\贾维斯\apps\web\node_modules\geist\dist\fonts\geist-sans\GeistSans-Bold.ttf",
+    r"apps/web/node_modules/geist/dist/fonts/geist-sans/GeistSans-SemiBold.ttf",
+    r"apps/web/node_modules/geist/dist/fonts/geist-sans/GeistSans-Bold.ttf",
     r"C:\Windows\Fonts\bahnschrift.ttf",
     r"C:\Windows\Fonts\msyhbd.ttc",
 ]
@@ -125,7 +125,7 @@ def load_ui_font(size: int, bold: bool = False):
 
 
 def main() -> None:
-    outdir = sys.argv[1] if len(sys.argv) > 1 else r"E:\贾维斯\docs\design"
+    outdir = sys.argv[1] if len(sys.argv) > 1 else r"docs/design"
     os.makedirs(outdir, exist_ok=True)
 
     white = render_variant("white")

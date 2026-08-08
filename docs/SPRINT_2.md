@@ -51,7 +51,7 @@ Jarvis 的日常本地模型改为：
 qwen3:4b-instruct-2507-q4_K_M
 ```
 
-该模型约 2.5GB，为非 Thinking 的指令版本，更适合 RTX 3050 4GB 上的日常对话。
+该模型约 2.5GB，为非 Thinking 的指令版本，更适合 独立显卡 4GB 上的日常对话。
 
 ## 待完成
 

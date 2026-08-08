@@ -36,7 +36,7 @@
 标准方案是 Git Worktree，但**本项目是 Windows 单机 + 非 git 仓库 + 本地个人系统**，直接套用 Worktree 有现实障碍：
 
 - 当前无 git 仓库 → 先初始化；
-- Worktree 需要每个 Agent 一个工作目录 + 各自装依赖（.venv、node_modules 各一份），**16GB 内存 + RTX 3050 的机器会资源爆炸**（两个 node_modules + 两个 venv + 两个 ollama 模型池）；
+- Worktree 需要每个 Agent 一个工作目录 + 各自装依赖（.venv、node_modules 各一份），**16GB 内存 + 独立显卡 的机器会资源爆炸**（两个 node_modules + 两个 venv + 两个 ollama 模型池）；
 - 单用户本地项目，不需要远程协同的"多工作树"隔离级别。
 
 因此采用**更适合本项目的混合策略**：

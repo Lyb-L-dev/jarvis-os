@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Jarvis OS Tablet Terminal",
     short_name: "Jarvis",
-    description: "Jarvis OS 小米平板专用终端",
+    description: "Jarvis OS 平板专用终端",
     start_url: "/tablet",
     display: "standalone",
     background_color: "#020509",

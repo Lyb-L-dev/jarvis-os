@@ -10,7 +10,7 @@ from PIL import Image, ImageFilter
 
 def main() -> None:
     src = sys.argv[1]
-    outdir = sys.argv[2] if len(sys.argv) > 2 else r"E:\贾维斯\docs\design"
+    outdir = sys.argv[2] if len(sys.argv) > 2 else r"docs/design"
     os.makedirs(outdir, exist_ok=True)
 
     im = Image.open(src).convert("RGB")

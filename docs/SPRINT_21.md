@@ -2,14 +2,14 @@
 
 ## 目标
 
-让小米平板 5 Pro 12.4 成为 Jarvis 的专用对话终端。模型、数据库、长期记忆、
+让平板 12.4 成为 Jarvis 的专用对话终端。模型、数据库、长期记忆、
 API Key 和后台任务仍只运行在电脑，平板只负责显示、触控输入和可选语音转写。
 
 ## 连接架构
 
 ```mermaid
 flowchart LR
-    TABLET["小米平板\nChrome / PWA"] -->|"USB · adb reverse\n127.0.0.1:3000 / 8000"| PC["Windows 电脑"]
+    TABLET["平板\nChrome / PWA"] -->|"USB · adb reverse\n127.0.0.1:3000 / 8000"| PC["Windows 电脑"]
     PC --> WEB["Next.js /tablet"]
     PC --> API["FastAPI"]
     API --> MODEL["MiMo / DeepSeek / 本地 Qwen"]
@@ -66,7 +66,7 @@ flowchart LR
 - 1280×800 横屏视觉检查：通过；
 - 真实聊天 API、模型状态和双语声音状态：已接入；
 - 真机 USB 验收：通过（2026-08-02）；
-- 设备：小米平板 `22081281AC`，ADB 产品标识 `dagu`；
+- 设备：平板 `22081281AC`，ADB 产品标识 `dagu`；
 - USB 调试 RSA 授权：通过，仅连接到用户自己的 Windows 电脑；
 - `tcp:3000` 与 `tcp:8000` ADB Reverse：建立并复核通过；
 - 平板浏览器 `/tablet` 前台启动：通过；
