@@ -25,6 +25,7 @@ import {
   ApprovalCenterItem,
   ApprovalCenterResponse,
   createToolExecution,
+  decideDraftReview,
   decideToolApproval,
   executeApprovedTool,
   getApprovalCenter,
@@ -51,6 +52,46 @@ const actionLabels: Record<string, string> = {
   investment_trade: "投资交易",
   payment: "支付",
 };
+
+function approvalKindLabel(item: ApprovalCenterItem) {
+  if (item.source === "tool") return item.tool_id ?? "工具操作";
+  if (item.source === "model") return `${item.provider ?? "模型"} 单次授权`;
+  return item.preview.draft_kind === "orchestration_plan"
+    ? "编排计划审阅"
+    : "成长任务草稿审阅";
+}
+
+function approvalKindHeading(item: ApprovalCenterItem) {
+  if (item.source === "tool") return "TOOL APPROVAL";
+  if (item.source === "model") return "MODEL CONSENT";
+  return "DRAFT REVIEW";
+}
+
+function approvalReason(item: ApprovalCenterItem) {
+  if (item.source === "tool") {
+    return "这是可能改变本地或外部状态的 R2 操作，批准后仍需单独执行。";
+  }
+  if (item.source === "model") {
+    return "这是付费或云端模型的单次授权，不会扩展到其他运行或数据类别。";
+  }
+  return "这是 R1 产品草稿审阅，只决定计划或草稿是否继续，不授予模型权限，也不会执行外部操作。";
+}
+
+function approvalStatusLabel(item: ApprovalCenterItem) {
+  if (item.source === "draft" && item.status === "approved") return "已通过审阅";
+  return statusLabel[item.status] ?? item.status;
+}
+
+function draftDecisionSuccess(
+  item: ApprovalCenterItem,
+  decision: "approve" | "reject",
+) {
+  if (decision === "reject") return "草稿已拒绝，编排不会继续。";
+  if (item.preview.draft_kind === "orchestration_plan") {
+    return "编排计划已通过并启动；它只会生成待审阅的成长任务草稿。";
+  }
+  return "成长任务草稿已通过审阅；这不会创建正式任务或执行外部操作。";
+}
 
 function formatTime(value?: string | null) {
   if (!value) return "—";
@@ -175,10 +216,14 @@ export function ApprovalCenter() {
   async function decide(item: ApprovalCenterItem, decision: "approve" | "reject") {
     await withAction(
       `${decision}-${item.id}`,
-      () => decideToolApproval(item.id, decision),
-      decision === "approve"
-        ? "已批准，但尚未执行。请再检查一次后点击执行。"
-        : "已拒绝，Jarvis 不会执行这个动作。",
+      () => item.source === "draft"
+        ? decideDraftReview(item, decision)
+        : decideToolApproval(item.id, decision),
+      item.source === "draft"
+        ? draftDecisionSuccess(item, decision)
+        : decision === "approve"
+          ? "已批准，但尚未执行。请再检查一次后点击执行。"
+          : "已拒绝，Jarvis 不会执行这个动作。",
     );
     setView(decision === "approve" ? "approved" : "history");
   }
@@ -242,7 +287,7 @@ export function ApprovalCenter() {
         </article>
         <article>
           <span className="approval-metric-icon approved"><ShieldCheck /></span>
-          <div><small>APPROVED</small><strong>{data?.approved_count ?? 0}</strong><p>已批准待执行</p></div>
+          <div><small>APPROVED</small><strong>{data?.approved_count ?? 0}</strong><p>已批准或通过</p></div>
         </article>
         <article>
           <span className="approval-metric-icon history"><History /></span>
@@ -277,7 +322,7 @@ export function ApprovalCenter() {
           <div className="approval-tabs">
             {([
               ["pending", "待确认", data?.pending_count ?? 0],
-              ["approved", "待执行", data?.approved_count ?? 0],
+              ["approved", "已批准/通过", data?.approved_count ?? 0],
               ["history", "历史", Math.max(0, (data?.history_count ?? 0) - (data?.pending_count ?? 0) - (data?.approved_count ?? 0))],
             ] as const).map(([key, label, count]) => (
               <button className={view === key ? "is-active" : ""} key={key} onClick={() => setView(key)} type="button">
@@ -291,8 +336,8 @@ export function ApprovalCenter() {
                 <span className={`approval-risk risk-${item.risk_level.toLowerCase()}`}>{item.risk_level}</span>
                 <div>
                   <strong>{item.title}</strong>
-                  <small>{item.source === "model" ? `${item.provider ?? "模型"} 单次授权` : item.tool_id}</small>
-                  <p>{statusLabel[item.status] ?? item.status} · {formatTime(item.created_at)}</p>
+                  <small>{approvalKindLabel(item)}</small>
+                  <p>{approvalStatusLabel(item)} · {formatTime(item.created_at)}</p>
                 </div>
                 <ChevronRight />
               </button>
@@ -310,14 +355,14 @@ export function ApprovalCenter() {
           {selected ? (
             <motion.div animate={{ opacity: 1 }} initial={reducedMotion ? false : { opacity: 0 }} key={selected.id}>
               <div className="approval-inspector-head">
-                <div><span className={`approval-risk risk-${selected.risk_level.toLowerCase()}`}>{selected.risk_level}</span><small>{selected.source === "tool" ? "TOOL ACTION" : "MODEL AUTHORIZATION"}</small></div>
-                <span className={`approval-status status-${selected.status}`}>{statusLabel[selected.status] ?? selected.status}</span>
+                <div><span className={`approval-risk risk-${selected.risk_level.toLowerCase()}`}>{selected.risk_level}</span><small>{approvalKindHeading(selected)}</small></div>
+                <span className={`approval-status status-${selected.status}`}>{approvalStatusLabel(selected)}</span>
               </div>
               <h2>{selected.title}</h2>
-              <p className="approval-reason">{selected.source === "tool" ? "这是一个可能改变本地或外部状态的动作，必须由你决定。" : "这是付费推理模型的单次任务授权，不会扩展到其他任务。"}</p>
+              <p className="approval-reason">{approvalReason(selected)}</p>
 
               <div className="approval-preview-card">
-                <div className="approval-preview-title"><FilePenLine /><span>执行前预览</span><small>PREVIEW · NOT EXECUTED</small></div>
+                <div className="approval-preview-title"><FilePenLine /><span>{selected.source === "draft" ? "审阅内容" : "执行前预览"}</span><small>{selected.source === "draft" ? "DECISION PREVIEW" : "PREVIEW · NOT EXECUTED"}</small></div>
                 {selected.source === "tool" ? (
                   <>
                     <div className="approval-preview-meta">
@@ -338,6 +383,17 @@ export function ApprovalCenter() {
                   <button className="approval-button reject" disabled={busy !== null} onClick={() => void decide(selected, "reject")} type="button"><X />拒绝</button>
                   <button className="approval-button edit" disabled={busy !== null} onClick={() => void editSelected()} type="button"><FilePenLine />用下方内容更新预览</button>
                   <button className="approval-button approve" disabled={busy !== null} onClick={() => void decide(selected, "approve")} type="button"><Check />批准范围</button>
+                </div>
+              )}
+              {selected.status === "pending" && selected.source === "draft" && (
+                <div className="approval-decision-row">
+                  <button className="approval-button reject" disabled={busy !== null} onClick={() => void decide(selected, "reject")} type="button"><X />拒绝草稿</button>
+                  <button className="approval-button approve" disabled={busy !== null} onClick={() => void decide(selected, "approve")} type="button"><Check />通过审阅</button>
+                </div>
+              )}
+              {selected.status === "approved" && selected.source === "draft" && selected.preview.draft_kind === "orchestration_plan" && (
+                <div className="approval-decision-row">
+                  <button className="approval-button approve" disabled={busy !== null} onClick={() => void decide(selected, "approve")} type="button"><Play />启动或重试编排</button>
                 </div>
               )}
               {selected.status === "approved" && selected.source === "tool" && (

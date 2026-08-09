@@ -85,7 +85,7 @@ export type ToolExecution = {
 
 export type ApprovalCenterItem = {
   id: string;
-  source: "tool" | "model";
+  source: "tool" | "model" | "draft";
   status: string;
   title: string;
   reason_code: string;

@@ -112,7 +112,7 @@ class ToolExecutionResponse(APIModel):
 
 class ApprovalCenterItem(APIModel):
     id: uuid.UUID
-    source: Literal["tool", "model"]
+    source: Literal["tool", "model", "draft"]
     status: ApprovalStatus
     title: str
     reason_code: str

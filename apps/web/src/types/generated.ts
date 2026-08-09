@@ -3503,7 +3503,7 @@ export interface components {
              * Source
              * @enum {string}
              */
-            source: "tool" | "model";
+            source: "tool" | "model" | "draft";
             status: components["schemas"]["ApprovalStatus"];
             /** Title */
             title: string;

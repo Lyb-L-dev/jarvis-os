@@ -64,6 +64,7 @@ from app.db.models.notification import (
     ScheduledJob,
 )
 from app.db.models.onboarding import OnboardingSession
+from app.db.models.orchestrator import DraftReviewRecord, OrchestrationPlanDraft
 from app.db.models.proactive import ProactiveSuggestion
 from app.db.models.research import ResearchReport, ResearchRequest, ResearchSource
 from app.db.models.semantic import SemanticIndexEntry, SemanticIndexState
@@ -89,6 +90,7 @@ __all__ = [
     "CompanionDevice",
     "DailyPlan",
     "DeliveryAttempt",
+    "DraftReviewRecord",
     "EnglishMessage",
     "EnglishMistake",
     "EnglishReview",
@@ -129,6 +131,7 @@ __all__ = [
     "Notification",
     "NotificationPreference",
     "OnboardingSession",
+    "OrchestrationPlanDraft",
     "PortfolioPosition",
     "ProactiveSuggestion",
     "ResearchReport",

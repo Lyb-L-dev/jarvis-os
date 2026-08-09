@@ -183,6 +183,57 @@
 - 关闭 `v3_reliable_event_feed_enabled` 立即回到旧 SSE；关闭 `v2_router_enforcement_enabled` 或清空意图 cohort 立即回到 ModelRouter；
 - `v3_sse_enabled` 仍是整个 SSE 端点的外层开关，关闭后继续返回 404。
 
+## V3-2：按需 Orchestrator 试点
+
+- 完成日期：2026-08-10
+- 状态：完成并验收；默认保持关闭，尚未进入 V3-3
+- 默认 Flag：`v3_orchestrator_enabled=false`
+- 相关提交：本节所在实现提交
+
+### 交付
+
+| 交付 | 证据 |
+|---|---|
+| 深模块接口 | `OnDemandOrchestrator` 对外只提供 `start / resume / cancel / get`；路由、前端和测试不依赖 LangGraph 节点或 Checkpointer 结构 |
+| 三重启动门槛 | 计划必须满足 `complexity >= 7`，且至少两个 Agent 或明确暂停恢复；用户通过计划 Draft Review 后才能启动 |
+| 首个试点 | 仅实现已确认 Research 报告到 Growth 任务草稿；最多 5 条草稿任务，不调用 Growth 正式应用路径 |
+| 父子 Run | `agent_runs` 增加 `parent_run_id` 与 `plan_ref`；父编排 Run 和 Growth 子 Run 继续使用既有 Run/Step 账本 |
+| 业务草稿 | 编排计划保存在 `orchestration_plan_drafts`，产物复用 `growth_plan_drafts`；Run、Step、Checkpoint 只保存引用 |
+| 确认类型分离 | 新增独立 `draft_reviews` R1 状态机；Model Consent、Draft Review、Tool Approval 共享 Approval Center 展示壳但不互相授权 |
+| 权限交集 | Research/Growth AgentSpec 都必须具备 `draft.text.prepare`，Tool Gateway 策略必须将内部草稿判定为 R1 自动允许 |
+| 恢复与取消 | PostgreSQL Checkpointer 支持新服务实例从同一 `run_ref` 恢复；取消同步终止父子 Run |
+| 前端试点 | 已确认研究报告可生成编排计划；Approval Center 明确展示并处理计划与成长任务草稿审阅 |
+| 迁移 | `0035_v3_orchestrator_pilot`；本地开发库已升级到 `0035 (head)` |
+
+### 验收记录
+
+- 50 条简单请求评测：0 条提出编排，误触发 0/50；
+- 20 条复杂试点：全部在 Growth 草稿审阅点暂停并恢复，产物各 1–5 条任务草稿；
+- 权限与副作用：正式 `GrowthTask` 创建数为 0，Tool Approval 创建数为 0，Model Consent 创建数为 0，父 Run 均未继承 DeepSeek 授权；
+- PostgreSQL 真库恢复：1 passed；使用新的 service/checkpointer 实例从同一 `run_ref` 恢复并完成；
+- PostgreSQL 迁移演练：新临时库完整 upgrade 到 `0035`，实际执行 `0035 -> 0034 -> 0035` 后恢复测试通过，临时库已删除；
+- 默认环境后端全量（排除既有静默时段墙钟用例）：387 passed / 37 skipped / 1 deselected；
+- 统一后端测试阶段：387 passed / 37 skipped / 1 failed，唯一失败仍为 `test_scan_route_returns_summary` 在上海静默时段读取真实墙钟；
+- 定向旧路径回归：Growth、Research、数据层、Tool Gateway、UI Event Feed 共 55 passed；
+- Prompt/策略评测：25/25；Ruff、前端 typecheck、前端 lint、Impeccable 检测、备份演练 dry-run 均通过；
+- 安全检查通过并保留既有 `.env` 本地读取权限警告；
+- `alembic check` 未发现 0035 模型漂移，但仍报告既有 LangGraph/Mem0 外部表和 `research_reports` 唯一索引基线差异。
+
+### 已知限制与后续边界
+
+- `v3_orchestrator_enabled` 默认关闭；尚未进行长期运行的编排耗时、事件积压和资源 p95 采样；
+- 首个试点使用已确认 Research 报告中的建议确定性生成 Growth 草稿，不调用云模型，也不支持其他 Agent 组合；
+- Draft Review 通过只表示接受计划或草稿；不会创建正式 Goal/Milestone/GrowthTask，也不替代 R2 Tool Approval；
+- PostgreSQL 环境验证覆盖一个跨连接恢复场景；20 条复杂场景矩阵在默认测试环境完成；
+- 既有静默时段墙钟测试和 Alembic 外部表/历史索引基线不由 V3-2 引入；
+- 下一阶段为 V3-3，但本阶段没有实现主动智能、扩大编排范围或增加外部副作用。
+
+### 回滚记录
+
+- 已在一次性 PostgreSQL 数据库实际执行 `0035 -> 0034 -> 0035`；downgrade 删除 Draft Review/计划表及父子/计划引用列，旧 Agent Run 账本保留；
+- 关闭 `v3_orchestrator_enabled` 后，计划预览和运行入口不可用，普通聊天继续使用 Direct Runtime；
+- 编排试点没有接管聊天执行路径，因此回滚不影响旧 Growth/Research 工作流。
+
 ## 记录规则
 
 后续每个阶段只在完成验收后追加一节，至少记录：

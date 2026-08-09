@@ -16,6 +16,8 @@ from app.db.models import (
     AgentApprovalRecord,
     AgentRunRecord,
     ChatConversation,
+    DraftReviewRecord,
+    OrchestrationPlanDraft,
     ProactiveSuggestion,
     ToolApprovalRecord,
     UiEventRecord,
@@ -239,6 +241,8 @@ _OUTBOX_TYPES: dict[type[object], tuple[str, str]] = {
     AgentApprovalRecord: ("agent_approval.changed", "agent_approval"),
     ToolApprovalRecord: ("tool_approval.changed", "tool_approval"),
     ProactiveSuggestion: ("proactive_suggestion.changed", "proactive_suggestion"),
+    OrchestrationPlanDraft: ("orchestration_plan.changed", "orchestration_plan"),
+    DraftReviewRecord: ("draft_review.changed", "draft_review"),
 }
 _OUTBOX_SEEN_KEY = "v3_ui_event_outbox_seen"
 
