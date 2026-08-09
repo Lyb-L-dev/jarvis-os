@@ -16,7 +16,17 @@ export type ProactiveSuggestionItem = {
   suggested_at: string;
   dismissed_at?: string | null;
   accepted_at?: string | null;
+  expires_at?: string | null;
+  expired_at?: string | null;
+  decision_reason?: string | null;
   created_at: string;
+};
+
+export type ProactiveCategoryState = {
+  category: string;
+  enabled: boolean;
+  pending_count: number;
+  disabled_at?: string | null;
 };
 
 export type ProactiveScanResult = {
@@ -106,6 +116,33 @@ export async function acceptProactiveSuggestion(
     {
       method: "POST",
       action: "接受建议",
+    },
+  );
+}
+
+export async function decideConversationProactiveSuggestion(
+  suggestionId: string,
+  action: "accept" | "dismiss",
+): Promise<ProactiveSuggestionItem> {
+  return request<ProactiveSuggestionItem>(
+    `${API_BASE_URL}/proactive/conversation/suggestions/${suggestionId}/${action}`,
+    {
+      method: "POST",
+      action: action === "accept" ? "接受对话建议" : "忽略对话建议",
+    },
+  );
+}
+
+export async function updateConversationProactiveCategory(
+  category: string,
+  enabled: boolean,
+): Promise<ProactiveCategoryState> {
+  return request<ProactiveCategoryState>(
+    `${API_BASE_URL}/proactive/conversation/categories/${encodeURIComponent(category)}`,
+    {
+      method: "PUT",
+      body: { enabled },
+      action: enabled ? "开启对话建议分类" : "关闭对话建议分类",
     },
   );
 }

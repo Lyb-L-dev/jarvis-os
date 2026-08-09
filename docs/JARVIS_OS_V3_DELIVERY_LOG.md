@@ -234,6 +234,53 @@
 - 关闭 `v3_orchestrator_enabled` 后，计划预览和运行入口不可用，普通聊天继续使用 Direct Runtime；
 - 编排试点没有接管聊天执行路径，因此回滚不影响旧 Growth/Research 工作流。
 
+## V3-3：会话级主动智能
+
+- 完成日期：2026-08-10
+- 状态：完成并验收；会话级能力默认关闭，旧 `/proactive` 与定时扫描继续保留
+- 默认 Flag：`v3_conversational_proactive_enabled=false`
+- 相关提交：本节所在实现提交
+
+### 交付
+
+| 交付 | 证据 |
+|---|---|
+| 主动智能深模块 | `ConversationalProactive` 以 `feed / decide / configure_category` 小接口封装过期、静默、排序、反馈和类别控制，路由与对话工作台不依赖内部查询结构 |
+| 规则生成边界 | 继续复用既有任务、周复盘、情报、英语复习规则扫描；后台不导入或调用 Model Gateway，不扩大 Orchestrator 范围 |
+| 反馈回流 | 复用 suggestion 的 `accepted / dismissed / expired` 状态和 `decision_reason`；按 `suggestion_type` 返回 `accept / (accept + dismiss)`，未新增通用 `feedback_signals` 表 |
+| 个性化排序 | 领域模块内按优先级、分类型接受率和建议年龄进行确定性排序；反馈只是轻量权重，不成为跨领域万能偏好模型 |
+| 去重与并发 | `user + source_type + source_id + suggestion_type` 的活动建议使用 PostgreSQL/SQLite 部分唯一索引；扫描器使用 savepoint 收敛并发冲突，dismiss 也遵守冷却期 |
+| 静默与频控 | 对话 feed 与旧扫描器共同遵守静默时段；每日上限和每次扫描上限沿用原配置，不引入第二套频控 |
+| 类别关闭 | `proactive_category_preferences` 保存四个既有来源类别的开关；关闭时使该类活动建议过期，后续扫描跳过，前端提供即时撤销 |
+| 对话操作 | 对话工作台展示建议和理由，并提供接受、忽略、不再显示此类；接受只记录反馈，不创建正式 `GrowthTask` 或任何审批 |
+| 可靠事件 | 创建、接受、忽略、过期和类别关闭导致的 suggestion 状态变化继续复用 V3-1.5 事务 outbox，不在事件正文复制建议内容 |
+| 迁移 | `0036_conversational_proactive` 增加过期/决策字段、活动建议部分唯一索引和类别偏好表；本地开发库已升级到 `0036 (head)` |
+
+### 验收记录
+
+- 统一门禁：395 passed / 38 skipped；此前依赖上海真实墙钟的扫描路由用例已改为显式关闭静默配置，本轮无失败；
+- V3-3 与 UI Event Feed 定向回归：23 passed，覆盖 Flag 默认关闭、规则 feed、零模型调用、静默时段、每日上限不变、类别关闭、过期、反馈统计、无正式任务副作用和可靠事件；
+- PostgreSQL 并发去重：1 passed；两个独立会话并发写入同来源同类型建议时仅一个提交成功，活动记录数为 1；
+- PostgreSQL 迁移演练：一次性数据库完整 upgrade 到 `0036`，实际执行 `0036 -> 0035 -> 0036` 后并发测试通过，临时数据库已删除；
+- 本地迁移前检查：原库位于 `0035`，共有 7 条 suggestion、0 组活动重复；升级后为 `0036 (head)`；
+- Ruff、Python compile、前端 typecheck、前端 lint、安全检查、Prompt/策略评测 25/25、备份演练 dry-run 全部通过；
+- Impeccable 检测只报告 `globals.css` 中 4 条既有全局告警，本次 V3-3 新增区域没有命中；
+- `alembic check` 未报告 0036 模型漂移，仍只报告既有 LangGraph/Mem0 外部表和 `research_reports` 唯一索引基线差异。
+
+### 已知限制与后续边界
+
+- Flag 保持默认关闭，尚无真实使用期的分类型接受率样本；当前接口只报告实际已决策数据，不伪造基线；
+- 排序最多读取 100 条活动建议并返回 1–10 条；当前日上限远低于该界限，长期样本增长后再按实测决定是否分页；
+- 本阶段完成类型、lint 与交互状态验证，但未新增浏览器视觉回归截图；V3-4b 再统一完成页面级浏览器验收；
+- 类别只覆盖既有四种规则来源；新增领域必须先定义自身排序与关闭语义，不得直接扩张成通用反馈表；
+- 后续可进入相互独立的 V3-4a 或 V3-4b；本阶段没有实现语音、删除旧页面或扩大 Orchestrator。
+
+### 回滚记录
+
+- 已在一次性 PostgreSQL 数据库实际执行 `0036 -> 0035 -> 0036`；downgrade 删除类别偏好、过期字段和活动建议唯一索引，既有 accepted/dismissed suggestion 与旧扫描器保留；
+- 关闭 `v3_conversational_proactive_enabled` 后，会话 feed 与新决策/类别接口返回 404，对话工作台不展示会话建议；旧 `/proactive` 页面、接受/忽略接口和定时规则扫描继续工作；
+- 迁移与 Flag 回滚互相独立：正常灰度只需关闭 Flag，不需要立即 downgrade。
+
 ## 记录规则
 
 后续每个阶段只在完成验收后追加一节，至少记录：

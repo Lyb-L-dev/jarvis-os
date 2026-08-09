@@ -42,10 +42,13 @@ export type DialogPendingApproval = {
 
 export type DialogProactive = {
   id: string;
+  source_type: string;
   suggestion_type: string;
   title: string;
   rationale: string;
   priority: number;
+  suggested_at: string;
+  expires_at?: string | null;
 };
 
 export type DialogTodaySummary = {

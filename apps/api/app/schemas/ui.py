@@ -84,10 +84,13 @@ class DialogPendingApproval(BaseModel):
 
 class DialogProactive(BaseModel):
     id: uuid.UUID
+    source_type: str
     suggestion_type: str
     title: str
     rationale: str
     priority: int
+    suggested_at: datetime
+    expires_at: datetime | None = None
 
 
 class DialogTodaySummary(BaseModel):

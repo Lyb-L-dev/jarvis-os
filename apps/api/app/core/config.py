@@ -77,6 +77,8 @@ class Settings(BaseSettings):
     v3_ui_event_poll_seconds: float = 1.0
     v3_memory_network_enabled: bool = False
     v3_orchestrator_enabled: bool = False
+    v3_conversational_proactive_enabled: bool = False
+    v3_proactive_expiry_hours: int = 72
 
     # Sprint 27 semantic indexes are derived, local-only data. Canonical
     # memories and knowledge documents remain in their existing tables.
@@ -254,6 +256,7 @@ class Settings(BaseSettings):
                 self.v3_reliable_event_feed_enabled,
                 self.v3_memory_network_enabled,
                 self.v3_orchestrator_enabled,
+                self.v3_conversational_proactive_enabled,
             )
         )
 

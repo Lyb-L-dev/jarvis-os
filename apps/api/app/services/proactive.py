@@ -13,6 +13,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
@@ -20,6 +21,7 @@ from app.db.models import (
     EnglishReview,
     GrowthTask,
     NewsItem,
+    ProactiveCategoryPreference,
     ProactiveSuggestion,
     User,
     WeeklyReview,
@@ -42,6 +44,10 @@ MODEL_NOTE = (
     "主动建议由本地规则生成：只产生建议与草稿，不执行动作，不在后台调用任何模型。"
 )
 WEEKLY_NAMESPACE = uuid.UUID("6f0e4e9a-9c3d-4f3b-9a2e-1f6c7d8e9a0b")
+
+
+class ProactiveSuggestionStateError(RuntimeError):
+    pass
 
 
 def _utc(value: datetime) -> datetime:
@@ -300,14 +306,43 @@ async def scan_proactive_suggestions(
             quiet_active=quiet,
         )
 
+    disabled_categories: set[str] = set()
+    if settings.v3_conversational_proactive_enabled:
+        stale_suggestions = await db.scalars(
+            select(ProactiveSuggestion).where(
+                ProactiveSuggestion.user_id == user_id,
+                ProactiveSuggestion.status == "suggested",
+                ProactiveSuggestion.expires_at.is_not(None),
+                ProactiveSuggestion.expires_at <= scan_at,
+            )
+        )
+        for suggestion in stale_suggestions:
+            suggestion.status = "expired"
+            suggestion.expired_at = scan_at
+            suggestion.decision_reason = "expired"
+        disabled_categories = set(
+            await db.scalars(
+                select(ProactiveCategoryPreference.category).where(
+                    ProactiveCategoryPreference.user_id == user_id,
+                    ProactiveCategoryPreference.enabled.is_(False),
+                )
+            )
+        )
+
     cooldown = timedelta(hours=settings.proactive_cooldown_hours)
     existing_keys = set(
         (
             await db.execute(
-                select(ProactiveSuggestion.source_type, ProactiveSuggestion.source_id)
+                select(
+                    ProactiveSuggestion.source_type,
+                    ProactiveSuggestion.source_id,
+                    ProactiveSuggestion.suggestion_type,
+                )
                 .where(
                     ProactiveSuggestion.user_id == user_id,
-                    ProactiveSuggestion.status.in_(["suggested", "accepted"]),
+                    ProactiveSuggestion.status.in_(
+                        ["suggested", "accepted", "dismissed"]
+                    ),
                     ProactiveSuggestion.created_at >= scan_at - cooldown,
                 )
             )
@@ -321,10 +356,25 @@ async def scan_proactive_suggestions(
         if today_created + created >= settings.proactive_daily_cap:
             skipped.append("daily_cap")
             break
-        key = (candidate.source_type, candidate.source_id)
+        if candidate.source_type in disabled_categories:
+            continue
+        key = (
+            candidate.source_type,
+            candidate.source_id,
+            candidate.suggestion_type,
+        )
         if key in existing_keys:
             continue
-        db.add(candidate)
+        if settings.v3_conversational_proactive_enabled:
+            candidate.expires_at = scan_at + timedelta(
+                hours=max(1, settings.v3_proactive_expiry_hours)
+            )
+        try:
+            async with db.begin_nested():
+                db.add(candidate)
+                await db.flush()
+        except IntegrityError:
+            continue
         existing_keys.add(key)
         created += 1
     await db.commit()
@@ -372,22 +422,37 @@ async def decide_suggestion(
     suggestion_id: uuid.UUID,
     *,
     action: str,
+    strict: bool = False,
 ) -> ProactiveSuggestionItem | None:
     suggestion = await db.scalar(
         select(ProactiveSuggestion).where(
             ProactiveSuggestion.id == suggestion_id,
             ProactiveSuggestion.user_id == user_id,
-        )
+        ).with_for_update()
     )
     if suggestion is None:
         return None
+    if strict and suggestion.status != "suggested":
+        raise ProactiveSuggestionStateError(
+            f"Suggestion is already {suggestion.status}"
+        )
     now = datetime.now(UTC)
-    if action == "dismiss" and suggestion.status == "suggested":
+    if (
+        suggestion.status == "suggested"
+        and suggestion.expires_at is not None
+        and _utc(suggestion.expires_at) <= now
+    ):
+        suggestion.status = "expired"
+        suggestion.expired_at = now
+        suggestion.decision_reason = "expired"
+    elif action == "dismiss" and suggestion.status == "suggested":
         suggestion.status = "dismissed"
         suggestion.dismissed_at = now
+        suggestion.decision_reason = "user_dismiss"
     elif action == "accept" and suggestion.status == "suggested":
         suggestion.status = "accepted"
         suggestion.accepted_at = now
+        suggestion.decision_reason = "user_accept"
     await db.commit()
     await db.refresh(suggestion)
     return ProactiveSuggestionItem.model_validate(suggestion)

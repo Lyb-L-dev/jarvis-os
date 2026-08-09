@@ -45,6 +45,7 @@ from app.schemas.ui import (
     TabletBootstrapResponse,
     TabletTodayTask,
 )
+from app.services.conversational_proactive import ConversationalProactive
 from app.services.events import get_event_bus
 from app.services.growth import local_today
 from app.services.notifications import minutes_to_clock, quiet_hours_active
@@ -311,6 +312,7 @@ async def _build_dialog_workspace(
     )
     if user is None:
         return None
+    settings = get_settings()
 
     conversation_rows = (
         await session.execute(
@@ -420,27 +422,22 @@ async def _build_dialog_workspace(
         for approval in agent_approvals
     ]
 
-    suggestions = (
-        await session.scalars(
-            select(ProactiveSuggestion)
-            .where(
-                ProactiveSuggestion.user_id == user.id,
-                ProactiveSuggestion.status == "pending",
+    proactive_suggestions: list[DialogProactive] = []
+    if settings.v3_conversational_proactive_enabled:
+        feed = await ConversationalProactive(session, settings).feed(user.id, limit=3)
+        proactive_suggestions = [
+            DialogProactive(
+                id=suggestion.id,
+                source_type=suggestion.source_type,
+                suggestion_type=suggestion.suggestion_type,
+                title=suggestion.title,
+                rationale=suggestion.rationale,
+                priority=suggestion.priority,
+                suggested_at=suggestion.suggested_at,
+                expires_at=suggestion.expires_at,
             )
-            .order_by(ProactiveSuggestion.suggested_at.desc())
-            .limit(10)
-        )
-    ).all()
-    proactive_suggestions = [
-        DialogProactive(
-            id=suggestion.id,
-            suggestion_type=suggestion.suggestion_type,
-            title=suggestion.title,
-            rationale=suggestion.rationale,
-            priority=suggestion.priority,
-        )
-        for suggestion in suggestions
-    ]
+            for suggestion in feed.suggestions
+        ]
 
     timezone = ZoneInfo(user.timezone or "Asia/Shanghai")
     today = local_today()

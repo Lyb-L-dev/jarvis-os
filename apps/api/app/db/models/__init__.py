@@ -65,7 +65,7 @@ from app.db.models.notification import (
 )
 from app.db.models.onboarding import OnboardingSession
 from app.db.models.orchestrator import DraftReviewRecord, OrchestrationPlanDraft
-from app.db.models.proactive import ProactiveSuggestion
+from app.db.models.proactive import ProactiveCategoryPreference, ProactiveSuggestion
 from app.db.models.research import ResearchReport, ResearchRequest, ResearchSource
 from app.db.models.semantic import SemanticIndexEntry, SemanticIndexState
 from app.db.models.tool import (
@@ -134,6 +134,7 @@ __all__ = [
     "OrchestrationPlanDraft",
     "PortfolioPosition",
     "ProactiveSuggestion",
+    "ProactiveCategoryPreference",
     "ResearchReport",
     "ResearchRequest",
     "ResearchSource",
