@@ -1,10 +1,11 @@
 """V3-1 memory network tables (PG-only, soft-delete, dual-temporal).
 
-Design source: docs/JARVIS_OS_V3_PLAN.md §5.2. The three tables upgrade flat
-memory entries into an entity/relation/event network without introducing a
-graph database. Candidates never enter context until confirmed; every row
-keeps ``source_kind + source_id`` for provenance, ``cloud_allowed`` for
-permission checks and ``valid_from/valid_until`` for fact-validity windows.
+Design source: docs/adr/0012-v3-memory-network-and-retrieval-boundary.md.
+The three tables upgrade flat memory entries into an entity/relation/event
+network without introducing a graph database. Candidates never enter context
+until confirmed; every row keeps ``source_kind + source_id`` for provenance,
+``cloud_allowed`` for permission checks and ``valid_from/valid_until`` for
+fact-validity windows.
 """
 
 from __future__ import annotations

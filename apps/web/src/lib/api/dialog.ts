@@ -1,6 +1,6 @@
 /**
  * V3-0 dialog workspace API client (aggregate endpoint + SSE events).
- * Owned by Frontend API Layer; contract frozen in docs/JARVIS_OS_V3_PLAN §13.
+ * Delivered contract: docs/JARVIS_OS_V3_DELIVERY_LOG.md (V3-0).
  */
 
 import { API_BASE_URL, request } from "./client";
@@ -82,11 +82,9 @@ export type UiEvent =
   | { id: string; type: string; data: unknown };
 
 /**
- * V3-4b unified "page summary card" contract — frozen in V3-0 per plan
- * §12.1-7 so the eight "dialog-first" pages (memory / knowledge / growth /
- * english / intelligence / investment / career / notifications) share one
- * rendering component and one payload shape. The backend does NOT implement
- * this yet; it aligns at V3-4b. Do not extend without a contract freeze.
+ * V3-4b page-summary envelope. The v1.2 roadmap requires typed payloads by
+ * card_type before this becomes a backend contract; the current free-form
+ * shape remains a V3-0 placeholder. See docs/JARVIS_OS_V3_PLAN.md §5.8.
  */
 export type DialogCard = {
   /** Stable page key, e.g. "memory" | "knowledge" | "growth". */
@@ -130,7 +128,8 @@ export async function getDialogWorkspace(
 
 /**
  * Subscribe to the V3 SSE event stream. Browser EventSource natively handles
- * reconnects, heartbeats and Last-Event-ID resume. Returns an unsubscribe fn.
+ * reconnects; the current server sends snapshots and heartbeats but does not
+ * yet guarantee Last-Event-ID replay across restarts. Returns an unsubscribe fn.
  */
 export function subscribeUiEvents(
   onEvent: (event: UiEvent) => void,

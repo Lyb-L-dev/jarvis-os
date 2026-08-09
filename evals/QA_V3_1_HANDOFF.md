@@ -12,7 +12,8 @@
 
 ## 验证结果
 
-- 评测集 36 条全部 JSON 合规，覆盖计划书 §15 要求的全部来源类型。
+- 评测集 36 条全部 JSON 合规，覆盖 V3-1 交付契约要求的全部来源类型；
+  当前加固口径见 `docs/JARVIS_OS_V3_PLAN.md` §5.4 与 ADR-0012。
 - 采纳率脚本真库实测：`rule confirmed=2 ignored=1 decisions=3 adoption_rate=66.7%`，
   pending 候选不计入分母。
 - API 契约测试 6/6；PG 集成测试真库 30/30（此前一直 skip，本次在

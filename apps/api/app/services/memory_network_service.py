@@ -1,6 +1,7 @@
 """V3-1 memory network service.
 
-Design source: docs/JARVIS_OS_V3_PLAN.md §5.2 / §6 / §12.1.4 / §15.
+Design source: docs/adr/0012-v3-memory-network-and-retrieval-boundary.md.
+Delivered baseline: docs/JARVIS_OS_V3_DELIVERY_LOG.md (V3-1).
 
 * Structured sources go through deterministic rules (goals / milestones /
   task events / english mistakes+reviews / news items / investment

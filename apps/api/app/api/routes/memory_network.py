@@ -1,4 +1,7 @@
-"""V3-1 memory network routes (frozen contract: docs/JARVIS_OS_V3_PLAN.md §15).
+"""V3-1 memory network routes.
+
+Design source: docs/adr/0012-v3-memory-network-and-retrieval-boundary.md.
+Delivered contract: docs/JARVIS_OS_V3_DELIVERY_LOG.md (V3-1).
 
 All endpoints return 404 while ``v3_memory_network_enabled`` is off, keeping
 the old retrieval path behaviour unchanged during rollout.

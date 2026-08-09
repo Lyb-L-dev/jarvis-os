@@ -1,6 +1,6 @@
 /**
- * V3-1 memory network API client (frozen contract:
- * docs/JARVIS_OS_V3_PLAN.md §15). Owned by Frontend API Layer.
+ * V3-1 memory network API client. Design source: ADR-0012; delivered
+ * contract: docs/JARVIS_OS_V3_DELIVERY_LOG.md (V3-1).
  */
 
 import { API_BASE_URL, request } from "./client";
