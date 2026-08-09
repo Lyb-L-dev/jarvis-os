@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     # router is local/read-only and never changes the existing model route.
     v2_router_shadow_enabled: bool = True
     v2_router_enforcement_enabled: bool = False
+    # Comma-separated gray cohort. Enabling enforcement never replaces every
+    # chat route at once; request intent must also be present here.
+    v2_router_enforcement_intents: str = "conversation"
     v2_prompt_registry_enabled: bool = False
     v2_shadow_runs_enabled: bool = False
     v2_policy_enforcement_enabled: bool = False
@@ -69,6 +72,9 @@ class Settings(BaseSettings):
     # Each flag must have a runtime read point and a test assertion.
     v3_dialog_workspace_enabled: bool = False
     v3_sse_enabled: bool = False
+    v3_reliable_event_feed_enabled: bool = False
+    v3_ui_event_retention_hours: int = 168
+    v3_ui_event_poll_seconds: float = 1.0
     v3_memory_network_enabled: bool = False
 
     # Sprint 27 semantic indexes are derived, local-only data. Canonical
@@ -180,6 +186,14 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.web_origins.split(",") if origin.strip()]
 
     @property
+    def v2_router_enforcement_intent_list(self) -> frozenset[str]:
+        return frozenset(
+            item.strip()
+            for item in self.v2_router_enforcement_intents.split(",")
+            if item.strip()
+        )
+
+    @property
     def mimo_configured(self) -> bool:
         if self.mimo_api_key is None or not self.mimo_api_key.get_secret_value():
             return False
@@ -236,6 +250,7 @@ class Settings(BaseSettings):
                 self.v2_mem0_chat_shadow_enabled,
                 self.v3_dialog_workspace_enabled,
                 self.v3_sse_enabled,
+                self.v3_reliable_event_feed_enabled,
                 self.v3_memory_network_enabled,
             )
         )

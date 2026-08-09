@@ -138,6 +138,51 @@
 - 已在一次性 PostgreSQL 数据库实际执行 downgrade 到 `0032` 并重新 upgrade 到 `0033`，迁移链路通过；
 - `v3_memory_network_enabled` 仍为默认关闭，旧检索 Flag-off 路径保留；新关联表不会在 Flag 关闭时接管用户请求。
 
+## V3-1.5：Router 切流与可靠事件地基
+
+- 完成日期：2026-08-10
+- 状态：完成并验收；Router 与可靠事件流均保持默认关闭，等待按意图灰度
+- 默认 Flag：`v2_router_enforcement_enabled=false`、`v3_reliable_event_feed_enabled=false`
+- 相关提交：本节所在实现提交
+
+### 交付
+
+| 交付 | 证据 |
+|---|---|
+| RouterV2 深模块 | `route_chat_request(request) -> ChatRoutePlan` 集中处理旧路由比较、意图 allowlist、模型授权和 provider fallback |
+| 真实灰度切流 | Flag 与 `v2_router_enforcement_intents` 同时命中才接管；关闭 Flag 或移出 cohort 立即回旧 ModelRouter |
+| 路由不变量 | 私人请求强制本地；DeepSeek 未授权时在写消息和模型调用前返回 409；未配置 DeepSeek 时沿旧语义降级本地 |
+| 编排前置字段 | `RouteDecision` 增加 `cross_agent_required`；只解释跨 Agent 需求，不在聊天中启动 Orchestrator |
+| 固定评测集 | `evals/router-v2-cutover.jsonl` 17 条，覆盖普通、深度、隐私、Research/Growth、cohort 回滚和跨 Agent 解释 |
+| 可靠事件日志 | `0034_reliable_ui_events` 新增单调 ID、事件类型、聚合引用、版本、创建/过期时间，不保存业务正文 |
+| 事务 Outbox | 对话、Agent Run、模型审批、工具审批、主动建议的状态变更与事件记录使用同一数据库事务 |
+| 事件适配器 | PostgreSQL 生产适配器与内存测试适配器隐藏在冻结的 `publish / stream / snapshot` 小接口后 |
+| SSE 续传 | 读取 `Last-Event-ID` 并重放保留期内事件；缺失、无效、过期或不存在的游标回退完整 snapshot |
+| 最终收敛 | 多连接从同一游标获得一致重放；慢消费者按数据库游标继续追赶；过期记录在连接建立时清理 |
+
+### 验收记录
+
+- Router 固定切流评测：17/17；Router/聊天/SSE/事件定向回归：68 passed；
+- 默认环境完整后端（排除既有静默时段墙钟用例）：359 passed / 36 skipped / 1 deselected；
+- 仓库统一门禁的测试阶段：381 passed / 36 skipped / 1 failed，唯一失败为 `test_scan_route_returns_summary` 在上海静默时段读取真实墙钟；
+- PostgreSQL V3-1.5 定向测试：3 passed，覆盖并发单调 ID、跨会话重放、无正文 schema、查询计划和 Outbox 同事务提交/回滚；
+- PostgreSQL 迁移演练：新库 upgrade 到 `0034`、`0034 -> 0033 -> 0034` 均通过，随机临时数据库均已删除；
+- 四层契约测试：7 passed；桌面端：6 passed；Prompt/策略评测：25/25；
+- 全量 Ruff、前端 typecheck、前端 lint、备份演练 dry-run 通过；安全检查通过并保留既有 `.env` 本地读取权限警告。
+
+### 已知限制与后续边界
+
+- `test_scan_route_returns_summary` 仍直接读取当前上海时间，在静默时段运行统一门禁会失败；该问题未由 V3-1.5 引入；
+- 可靠事件流使用 PostgreSQL 轮询而非 Redis；默认 1 秒轮询、7 天保留，可通过配置调整；
+- 两个新 Flag 默认关闭，尚未进行长期运行下的事件积压和 p95 采样；
+- 下一阶段为 V3-2 Orchestrator 试点；本阶段没有启动 Orchestrator、V3-3 或任何外部副作用。
+
+### 回滚记录
+
+- 已实际执行 `0034 -> 0033 -> 0034`；downgrade 删除 `ui_events`，旧 V3-0 SSE 仍保留 snapshot、心跳和版本轮询；
+- 关闭 `v3_reliable_event_feed_enabled` 立即回到旧 SSE；关闭 `v2_router_enforcement_enabled` 或清空意图 cohort 立即回到 ModelRouter；
+- `v3_sse_enabled` 仍是整个 SSE 端点的外层开关，关闭后继续返回 404。
+
 ## 记录规则
 
 后续每个阶段只在完成验收后追加一节，至少记录：

@@ -4,6 +4,7 @@ import asyncio
 import json
 import uuid
 from datetime import UTC, datetime, time, timedelta
+from time import monotonic
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -47,6 +48,7 @@ from app.schemas.ui import (
 from app.services.events import get_event_bus
 from app.services.growth import local_today
 from app.services.notifications import minutes_to_clock, quiet_hours_active
+from app.services.ui_event_feed import PostgresUiEventStore, UiEventFeed
 
 router = APIRouter(prefix="/ui", tags=["ui"])
 
@@ -279,7 +281,11 @@ def _agent_name(agent_id: str) -> str:
 
 
 async def _dialog_data_version(session: object) -> int:
-    """Monotonic-ish version = max updated/created epoch across dialog sets."""
+    """Return the reliable event cursor, or the V3-0 timestamp fallback."""
+
+    if get_settings().v3_reliable_event_feed_enabled:
+        replay = await UiEventFeed(PostgresUiEventStore(session)).stream(None)
+        return replay.latest_event_id
 
     values: list[int] = []
     for statement in (
@@ -297,6 +303,8 @@ async def _dialog_data_version(session: object) -> int:
 
 async def _build_dialog_workspace(
     session: object,
+    *,
+    data_version: int | None = None,
 ) -> DialogWorkspaceResponse | None:
     user = await session.scalar(
         select(User).order_by(User.created_at.asc()).limit(1)
@@ -477,7 +485,11 @@ async def _build_dialog_workspace(
     )
 
     return DialogWorkspaceResponse(
-        data_version=await _dialog_data_version(session),
+        data_version=(
+            data_version
+            if data_version is not None
+            else await _dialog_data_version(session)
+        ),
         user=DialogUserBrief(name=user.name, timezone=user.timezone),
         conversations=conversations,
         active_runs=active_runs,
@@ -512,7 +524,7 @@ async def get_dialog_workspace() -> DialogWorkspaceResponse:
     return payload
 
 
-async def _event_stream(request: Request):
+async def _legacy_event_stream(request: Request):
     """SSE generator: initial snapshot + dialog version + heartbeat."""
 
     bus = get_event_bus()
@@ -587,9 +599,112 @@ async def _event_stream(request: Request):
         bus.unsubscribe(queue)
 
 
+def _reliable_frame(
+    event_type: str,
+    data: object,
+    *,
+    event_id: int | None = None,
+) -> str:
+    payload = json.dumps(data, ensure_ascii=False, default=str)
+    prefix = f"id: {event_id}\n" if event_id is not None else ""
+    return f"{prefix}event: {event_type}\ndata: {payload}\n\n"
+
+
+def _last_event_id(request: Request) -> tuple[int | None, bool]:
+    raw = request.headers.get("last-event-id")
+    if raw is None:
+        return None, True
+    try:
+        parsed = int(raw)
+    except ValueError:
+        return None, False
+    return (parsed, parsed >= 0)
+
+
+async def _reliable_event_stream(request: Request):
+    """Replay the PG log, falling back to an authoritative dialog snapshot."""
+
+    requested_id, valid_header = _last_event_id(request)
+    cursor = requested_id or 0
+    should_snapshot = requested_id is None or not valid_header
+
+    async with SessionFactory() as session:
+        await session.execute(text("SELECT 1"))
+        store = PostgresUiEventStore(session)
+        await store.prune()
+        await session.commit()
+        async def build_snapshot(data_version: int):
+            return await _build_dialog_workspace(
+                session,
+                data_version=data_version,
+            )
+
+        feed = UiEventFeed(store, snapshot_factory=build_snapshot)
+        replay = await feed.stream(requested_id if valid_header else None)
+        if requested_id is not None and valid_header:
+            should_snapshot = not replay.resumable
+        if should_snapshot:
+            dialog = await feed.snapshot()
+            if dialog is not None:
+                cursor = dialog.data_version
+                yield _reliable_frame(
+                    "snapshot",
+                    {
+                        "data_version": cursor,
+                        "pending_approvals": len(dialog.pending_approvals),
+                        "active_runs": len(dialog.active_runs),
+                        "proactive": len(dialog.proactive_suggestions),
+                        "today": dialog.today_summary.model_dump(),
+                    },
+                    event_id=cursor,
+                )
+                yield _reliable_frame(
+                    "dialog",
+                    {"data_version": cursor},
+                    event_id=cursor,
+                )
+        else:
+            for item in replay.events:
+                cursor = item.event_id
+                yield _reliable_frame(
+                    "dialog",
+                    {"data_version": item.data_version},
+                    event_id=item.event_id,
+                )
+
+    settings = get_settings()
+    poll_seconds = max(0.1, settings.v3_ui_event_poll_seconds)
+    heartbeat_at = monotonic() + 15
+    while not await request.is_disconnected():
+        await asyncio.sleep(poll_seconds)
+        async with SessionFactory() as session:
+            feed = UiEventFeed(PostgresUiEventStore(session))
+            replay = await feed.stream(cursor)
+        for item in replay.events:
+            cursor = item.event_id
+            yield _reliable_frame(
+                "dialog",
+                {"data_version": item.data_version},
+                event_id=item.event_id,
+            )
+        now = monotonic()
+        if now >= heartbeat_at:
+            yield _reliable_frame("heartbeat", {})
+            heartbeat_at = now + 15
+
+
+async def _event_stream(request: Request):
+    if get_settings().v3_reliable_event_feed_enabled:
+        async for frame in _reliable_event_stream(request):
+            yield frame
+        return
+    async for frame in _legacy_event_stream(request):
+        yield frame
+
+
 @router.get("/events")
 async def ui_events(request: Request) -> StreamingResponse:
-    """SSE 事件流（V3-0 基座）。flag 关闭时 404。"""
+    """SSE event feed; reliable replay is independently flag-gated."""
 
     if not get_settings().v3_sse_enabled:
         raise HTTPException(

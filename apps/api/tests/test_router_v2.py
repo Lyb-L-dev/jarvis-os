@@ -173,3 +173,12 @@ def test_explicit_agent_choice_is_respected() -> None:
 
     assert decision.agent_id is AgentId.ENGLISH
     assert decision.routing_reason == "使用用户明确选择的 Agent。"
+
+
+def test_cross_agent_need_is_explained_without_starting_orchestrator() -> None:
+    decision = build_router().route(
+        RouteRequest(content="先深入研究并多来源对比行业趋势，再制定长期成长计划和路线图")
+    )
+
+    assert decision.cross_agent_required is True
+    assert decision.complexity >= 7

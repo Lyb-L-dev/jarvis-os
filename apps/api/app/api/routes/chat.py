@@ -48,12 +48,14 @@ from app.schemas.observability import (
 )
 from app.services.agent_core import (
     AgentRouteDecision,
+    ChatRoutePlan,
+    ModelConsentRequired,
     ModelPreference,
     RouteRequest,
     RouterV2,
     ShadowConsistencyResult,
     build_default_registry,
-    check_shadow_consistency,
+    route_chat_request,
 )
 from app.services.context_engineering import assemble_chat_context
 from app.services.conversation_summary import (
@@ -70,12 +72,9 @@ from app.services.model_gateway import (
     ChatMessage,
     ChatStreamChunk,
     ModelMode,
-    ModelRouter,
     ResolvedRoute,
-    RoutingContext,
     execute_model_call,
     local_runtime_fallback,
-    resolve_route,
     stream_model_call,
 )
 from app.services.personality import build_system_prompt
@@ -216,19 +215,7 @@ def system_prompt(user: User) -> str:
     return build_system_prompt(user)
 
 
-def require_paid_call_confirmation(
-    route: ResolvedRoute,
-    *,
-    confirmed: bool,
-) -> None:
-    if route.provider_used == "deepseek" and not confirmed:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="DeepSeek paid call requires confirmation",
-        )
-
-
-def shadow_agent_route(
+def build_agent_route_preview(
     settings: Settings,
     *,
     content: str,
@@ -236,7 +223,10 @@ def shadow_agent_route(
     sensitive: bool,
     paid_call_confirmed: bool,
 ) -> AgentRouteDecision | None:
-    if not settings.v2_router_shadow_enabled:
+    if not (
+        settings.v2_router_shadow_enabled
+        or settings.v2_router_enforcement_enabled
+    ):
         return None
     return RouterV2(settings, build_default_registry()).route(
         RouteRequest(
@@ -248,6 +238,31 @@ def shadow_agent_route(
     )
 
 
+def select_chat_route(
+    settings: Settings,
+    *,
+    content: str,
+    selected_mode: ModelMode,
+    sensitive: bool,
+    paid_call_confirmed: bool,
+) -> ChatRoutePlan:
+    try:
+        return route_chat_request(
+            settings,
+            RouteRequest(
+                content=content,
+                sensitive=sensitive,
+                model_preference=ModelPreference(selected_mode.value),
+                paid_model_confirmed=paid_call_confirmed,
+            ),
+        )
+    except ModelConsentRequired as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="DeepSeek paid call requires confirmation",
+        ) from exc
+
+
 @router.post("/routing/preview", response_model=AgentRouteDecision | None)
 async def preview_agent_route(
     payload: AgentRoutingPreviewRequest,
@@ -255,7 +270,7 @@ async def preview_agent_route(
 ) -> AgentRouteDecision | None:
     """Return a local policy preview without saving content or calling a model."""
 
-    return shadow_agent_route(
+    return build_agent_route_preview(
         settings,
         content=payload.content.strip(),
         selected_mode=payload.mode,
@@ -349,28 +364,16 @@ async def prepare_chat_call(
         raise HTTPException(status_code=422, detail="Message cannot be blank")
 
     selected_mode = payload.mode or ModelMode(conversation.model_mode)
-    agent_routing = shadow_agent_route(
+    route_plan = select_chat_route(
         settings,
         content=content,
         selected_mode=selected_mode,
         sensitive=payload.sensitive,
         paid_call_confirmed=payload.paid_call_confirmed,
     )
-    decision = ModelRouter(settings).route(
-        RoutingContext(mode=selected_mode, sensitive=payload.sensitive)
-    )
-    route = resolve_route(settings, decision)
-    require_paid_call_confirmation(
-        route,
-        confirmed=payload.paid_call_confirmed,
-    )
-    shadow_consistency = check_shadow_consistency(
-        agent_routing,
-        real_provider=route.provider_used,
-        real_model=route.model_used,
-        real_reason=route.route_reason,
-        enabled=getattr(settings, "v2_router_enforcement_enabled", False),
-    )
+    agent_routing = route_plan.agent_decision
+    route = route_plan.resolved_route
+    shadow_consistency = route_plan.baseline
 
     conversation.model_mode = selected_mode.value
     conversation.last_message_at = datetime.now(UTC)
@@ -476,28 +479,16 @@ async def prepare_regeneration(
         raise HTTPException(status_code=409, detail="No user message found to answer")
 
     selected_mode = payload.mode or ModelMode(conversation.model_mode)
-    agent_routing = shadow_agent_route(
+    route_plan = select_chat_route(
         settings,
         content=user_message.content,
         selected_mode=selected_mode,
         sensitive=payload.sensitive,
         paid_call_confirmed=payload.paid_call_confirmed,
     )
-    decision = ModelRouter(settings).route(
-        RoutingContext(mode=selected_mode, sensitive=payload.sensitive)
-    )
-    route = resolve_route(settings, decision)
-    require_paid_call_confirmation(
-        route,
-        confirmed=payload.paid_call_confirmed,
-    )
-    shadow_consistency = check_shadow_consistency(
-        agent_routing,
-        real_provider=route.provider_used,
-        real_model=route.model_used,
-        real_reason=route.route_reason,
-        enabled=getattr(settings, "v2_router_enforcement_enabled", False),
-    )
+    agent_routing = route_plan.agent_decision
+    route = route_plan.resolved_route
+    shadow_consistency = route_plan.baseline
 
     conversation.model_mode = selected_mode.value
     conversation.last_message_at = datetime.now(UTC)

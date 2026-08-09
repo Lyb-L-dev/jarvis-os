@@ -72,6 +72,7 @@ from app.db.models.tool import (
     ToolExecutionEventRecord,
     ToolExecutionRecord,
 )
+from app.db.models.ui_event import UiEventRecord
 from app.db.models.user import User, UserPreference, UserProfile
 
 __all__ = [
@@ -140,6 +141,7 @@ __all__ = [
     "ToolApprovalRecord",
     "ToolExecutionEventRecord",
     "ToolExecutionRecord",
+    "UiEventRecord",
     "User",
     "UserPreference",
     "UserProfile",

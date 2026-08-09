@@ -128,8 +128,9 @@ export async function getDialogWorkspace(
 
 /**
  * Subscribe to the V3 SSE event stream. Browser EventSource natively handles
- * reconnects; the current server sends snapshots and heartbeats but does not
- * yet guarantee Last-Event-ID replay across restarts. Returns an unsubscribe fn.
+ * reconnects and sends Last-Event-ID. When the V3 reliable-feed flag is on,
+ * the server replays retained PostgreSQL events across restarts; otherwise it
+ * falls back to the V3-0 snapshot + polling stream. Returns an unsubscribe fn.
  */
 export function subscribeUiEvents(
   onEvent: (event: UiEvent) => void,
