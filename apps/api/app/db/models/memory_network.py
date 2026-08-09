@@ -21,10 +21,12 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
-    UniqueConstraint,
     Uuid,
+    func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -70,6 +72,19 @@ class MemoryEntity(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         CheckConstraint(check_sql("entity_type", ENTITY_TYPES), name="entity_type"),
         CheckConstraint(check_sql("status", ENTITY_STATUSES), name="status"),
         CheckConstraint(check_sql("source_kind", SOURCE_KINDS), name="source_kind"),
+        Index(
+            "uq_memory_entities_current_identity",
+            "user_id",
+            "entity_type",
+            "normalized_key",
+            unique=True,
+            postgresql_where=text(
+                "deleted_at IS NULL AND status IN ('candidate', 'active')"
+            ),
+            sqlite_where=text(
+                "deleted_at IS NULL AND status IN ('candidate', 'active')"
+            ),
+        ),
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -114,11 +129,21 @@ class MemoryRelation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         CheckConstraint(check_sql("status", RELATION_STATUSES), name="status"),
         CheckConstraint(check_sql("source_kind", SOURCE_KINDS), name="source_kind"),
-        UniqueConstraint(
+        Index(
+            "uq_memory_relations_current_assertion",
+            "user_id",
             "from_entity_id",
             "relation_type",
             "to_entity_id",
-            name="uq_memory_relations_from_type_to",
+            unique=True,
+            postgresql_where=text(
+                "deleted_at IS NULL AND valid_until IS NULL "
+                "AND status IN ('candidate', 'active')"
+            ),
+            sqlite_where=text(
+                "deleted_at IS NULL AND valid_until IS NULL "
+                "AND status IN ('candidate', 'active')"
+            ),
         ),
     )
 
@@ -203,4 +228,39 @@ class MemoryEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="candidate", index=True
+    )
+
+
+class MemoryEventEntity(Base):
+    """Indexed event/entity link; ``MemoryEvent.entity_ids`` is rollback-only."""
+
+    __tablename__ = "memory_event_entities"
+    __table_args__ = (
+        Index(
+            "ix_memory_event_entities_user_entity",
+            "user_id",
+            "entity_id",
+        ),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    event_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("memory_events.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    entity_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("memory_entities.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
     )

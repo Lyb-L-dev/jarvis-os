@@ -24,14 +24,13 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import or_, select
+from sqlalchemy import exists, not_, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.db.models import (
-    ChatMessage as StoredChatMessage,
-)
-from app.db.models import (
+    ChatConversation,
     EnglishMistake,
     EnglishReview,
     Goal,
@@ -41,13 +40,18 @@ from app.db.models import (
     Memory,
     MemoryEntity,
     MemoryEvent,
+    MemoryEventEntity,
     MemoryRelation,
     Milestone,
     NewsItem,
     SemanticIndexEntry,
     TaskEvent,
 )
+from app.db.models import (
+    ChatMessage as StoredChatMessage,
+)
 from app.db.models.memory_network import ENTITY_TYPES, EVENT_TYPES
+from app.services.context_engineering import estimate_tokens
 from app.services.memory import contains_sensitive_memory
 from app.services.model_gateway import ModelMode, ModelRouter, RoutingContext
 from app.services.model_gateway.execution import execute_model_call, resolve_route
@@ -147,8 +151,23 @@ async def _ensure_entity(
         importance=importance,
         cloud_allowed=cloud_allowed,
     )
-    session.add(entity)
-    await session.flush()
+    try:
+        async with session.begin_nested():
+            session.add(entity)
+            await session.flush()
+    except IntegrityError:
+        existing = await session.scalar(
+            select(MemoryEntity).where(
+                MemoryEntity.user_id == user_id,
+                MemoryEntity.entity_type == entity_type,
+                MemoryEntity.normalized_key == key,
+                MemoryEntity.deleted_at.is_(None),
+                MemoryEntity.status.in_(("candidate", "active")),
+            )
+        )
+        if existing is None:
+            raise
+        return existing, False
     return entity, True
 
 
@@ -170,6 +189,7 @@ async def _ensure_relation(
             MemoryRelation.relation_type == relation_type,
             MemoryRelation.to_entity_id == to_entity.id,
             MemoryRelation.deleted_at.is_(None),
+            MemoryRelation.valid_until.is_(None),
             MemoryRelation.status.in_(("candidate", "active")),
         )
     )
@@ -186,8 +206,65 @@ async def _ensure_relation(
         source_id=source_id,
         properties={},
     )
-    session.add(relation)
+    try:
+        async with session.begin_nested():
+            session.add(relation)
+            await session.flush()
+    except IntegrityError:
+        existing = await session.scalar(
+            select(MemoryRelation).where(
+                MemoryRelation.user_id == user_id,
+                MemoryRelation.from_entity_id == from_entity.id,
+                MemoryRelation.relation_type == relation_type,
+                MemoryRelation.to_entity_id == to_entity.id,
+                MemoryRelation.deleted_at.is_(None),
+                MemoryRelation.valid_until.is_(None),
+                MemoryRelation.status.in_(("candidate", "active")),
+            )
+        )
+        if existing is None:
+            raise
+        return existing, False
     return relation, True
+
+
+async def _link_event_entities(
+    session: AsyncSession,
+    *,
+    event: MemoryEvent,
+    entity_ids: list[uuid.UUID] | None,
+) -> None:
+    if not entity_ids:
+        return
+    requested = set(entity_ids)
+    valid = set(
+        await session.scalars(
+            select(MemoryEntity.id).where(
+                MemoryEntity.user_id == event.user_id,
+                MemoryEntity.id.in_(requested),
+                MemoryEntity.deleted_at.is_(None),
+            )
+        )
+    )
+    existing = set(
+        await session.scalars(
+            select(MemoryEventEntity.entity_id).where(
+                MemoryEventEntity.user_id == event.user_id,
+                MemoryEventEntity.event_id == event.id,
+            )
+        )
+    )
+    session.add_all(
+        MemoryEventEntity(
+            user_id=event.user_id,
+            event_id=event.id,
+            entity_id=entity_id,
+        )
+        for entity_id in valid - existing
+    )
+    # Keep the V3-1 JSON representation synchronized during the rollback
+    # window. Retrieval uses the FK-protected association table instead.
+    event.entity_ids = [str(entity_id) for entity_id in sorted(valid | existing, key=str)]
 
 
 async def _ensure_event(
@@ -202,15 +279,22 @@ async def _ensure_event(
     entity_ids: list[uuid.UUID] | None = None,
     ref_json: dict[str, Any] | None = None,
 ) -> tuple[MemoryEvent, bool]:
-    existing = await session.scalar(
-        select(MemoryEvent).where(
-            MemoryEvent.user_id == user_id,
-            MemoryEvent.source_kind == source_kind,
-            MemoryEvent.source_id == source_id,
-            MemoryEvent.event_type == event_type,
+    existing = None
+    if source_id is not None:
+        existing = await session.scalar(
+            select(MemoryEvent).where(
+                MemoryEvent.user_id == user_id,
+                MemoryEvent.source_kind == source_kind,
+                MemoryEvent.source_id == source_id,
+                MemoryEvent.event_type == event_type,
+            )
         )
-    )
     if existing is not None:
+        await _link_event_entities(
+            session,
+            event=existing,
+            entity_ids=entity_ids,
+        )
         return existing, False
     event = MemoryEvent(
         user_id=user_id,
@@ -225,6 +309,12 @@ async def _ensure_event(
         status="candidate",
     )
     session.add(event)
+    await session.flush()
+    await _link_event_entities(
+        session,
+        event=event,
+        entity_ids=entity_ids,
+    )
     return event, True
 
 
@@ -972,6 +1062,8 @@ async def confirm_candidate(
         if relation.status != "candidate":
             raise HTTPException(status_code=409, detail="Relation is not a pending candidate")
         relation.status = "active"
+        relation.valid_from = relation.valid_from or datetime.now(UTC)
+        relation.valid_until = None
         return "relation", relation, []
     event = await _owned_event(session, user_id, candidate_id)
     if event is not None:
@@ -1009,6 +1101,7 @@ async def ignore_candidate(
         )
         for relation in relations:
             relation.status = "archived"
+            relation.valid_until = relation.valid_until or datetime.now(UTC)
         await _sync_entity_semantic_index(session, settings, entity)
         return "entity", entity, []
     relation = await _owned_relation(session, user_id, candidate_id)
@@ -1016,6 +1109,7 @@ async def ignore_candidate(
         if relation.status == "archived":
             raise HTTPException(status_code=409, detail="Relation is already archived")
         relation.status = "archived"
+        relation.valid_until = relation.valid_until or datetime.now(UTC)
         return "relation", relation, []
     event = await _owned_event(session, user_id, candidate_id)
     if event is not None:
@@ -1061,6 +1155,7 @@ async def merge_entity(
         )
     )
     merged_ids: list[uuid.UUID] = []
+    ended_at = datetime.now(UTC)
     for relation in relations:
         new_from = (
             target.id if relation.from_entity_id == source.id else relation.from_entity_id
@@ -1068,6 +1163,7 @@ async def merge_entity(
         new_to = target.id if relation.to_entity_id == source.id else relation.to_entity_id
         if new_from == new_to:
             relation.status = "archived"
+            relation.valid_until = relation.valid_until or ended_at
             continue
         duplicate = await session.scalar(
             select(MemoryRelation.id).where(
@@ -1082,32 +1178,313 @@ async def merge_entity(
         )
         if duplicate is not None:
             relation.status = "archived"
+            relation.valid_until = relation.valid_until or ended_at
             merged_ids.append(relation.id)
             continue
         relation.from_entity_id = new_from
         relation.to_entity_id = new_to
         merged_ids.append(relation.id)
 
-    events = list(
+    source_links = list(
         await session.scalars(
-            select(MemoryEvent).where(
-                MemoryEvent.user_id == user_id,
-                MemoryEvent.status.in_(("candidate", "active")),
+            select(MemoryEventEntity).where(
+                MemoryEventEntity.user_id == user_id,
+                MemoryEventEntity.entity_id == source.id,
             )
         )
     )
-    for event in events:
-        if not event.entity_ids:
-            continue
-        ids = [str(raw) for raw in event.entity_ids]
-        if str(source.id) in ids:
+    affected_event_ids = {link.event_id for link in source_links}
+    target_event_ids = set(
+        await session.scalars(
+            select(MemoryEventEntity.event_id).where(
+                MemoryEventEntity.user_id == user_id,
+                MemoryEventEntity.entity_id == target.id,
+                MemoryEventEntity.event_id.in_(affected_event_ids),
+            )
+        )
+    ) if affected_event_ids else set()
+    for link in source_links:
+        if link.event_id in target_event_ids:
+            await session.delete(link)
+        else:
+            link.entity_id = target.id
+    if affected_event_ids:
+        await session.flush()
+        events = list(
+            await session.scalars(
+                select(MemoryEvent).where(MemoryEvent.id.in_(affected_event_ids))
+            )
+        )
+        links = list(
+            await session.execute(
+                select(
+                    MemoryEventEntity.event_id,
+                    MemoryEventEntity.entity_id,
+                ).where(MemoryEventEntity.event_id.in_(affected_event_ids))
+            )
+        )
+        ids_by_event: dict[uuid.UUID, list[uuid.UUID]] = {
+            event_id: [] for event_id in affected_event_ids
+        }
+        for event_id, entity_id in links:
+            ids_by_event[event_id].append(entity_id)
+        for event in events:
             event.entity_ids = [
-                str(target.id) if raw == str(source.id) else raw for raw in ids
-            ]
+                str(entity_id)
+                for entity_id in sorted(ids_by_event[event.id], key=str)
+            ] or None
 
     source.status = "merged"
     await _sync_entity_semantic_index(session, settings, source)
     return "entity", target, merged_ids
+
+
+def _render_memory_context(
+    entities: list[MemoryEntity],
+    relations: list[MemoryRelation],
+    events: list[MemoryEvent],
+) -> str:
+    """Render the exact retrieval payload used for budget accounting."""
+
+    payload = {
+        "entities": [
+            {
+                "id": entity.id,
+                "type": entity.entity_type,
+                "name": entity.name,
+                "importance": entity.importance,
+                "source_kind": entity.source_kind,
+                "source_id": entity.source_id,
+            }
+            for entity in entities
+        ],
+        "relations": [
+            {
+                "id": relation.id,
+                "from_entity_id": relation.from_entity_id,
+                "relation_type": relation.relation_type,
+                "to_entity_id": relation.to_entity_id,
+                "confidence": relation.confidence,
+                "properties": relation.properties,
+                "source_kind": relation.source_kind,
+                "source_id": relation.source_id,
+            }
+            for relation in relations
+        ],
+        "events": [
+            {
+                "id": event.id,
+                "entity_ids": event.entity_ids,
+                "event_type": event.event_type,
+                "happened_at": event.happened_at,
+                "summary": event.summary,
+                "ref_json": event.ref_json,
+                "source_kind": event.source_kind,
+                "source_id": event.source_id,
+            }
+            for event in events
+        ],
+    }
+    return json.dumps(
+        payload,
+        default=str,
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+    )
+
+
+def _apply_retrieval_budget(
+    *,
+    entities: list[MemoryEntity],
+    relations: list[MemoryRelation],
+    events: list[MemoryEvent],
+    limit: int,
+    settings: Settings,
+) -> tuple[list[MemoryEntity], list[MemoryRelation], list[MemoryEvent], int]:
+    """Round-robin a global item budget, then trim the rendered token budget."""
+
+    selected_entities: list[MemoryEntity] = []
+    selected_relations: list[MemoryRelation] = []
+    selected_events: list[MemoryEvent] = []
+    buckets: tuple[tuple[list[Any], list[Any]], ...] = (
+        (entities, selected_entities),
+        (relations, selected_relations),
+        (events, selected_events),
+    )
+    positions = [0, 0, 0]
+    selected_count = 0
+    while selected_count < limit:
+        progressed = False
+        for index, (source, target) in enumerate(buckets):
+            if selected_count >= limit:
+                break
+            if positions[index] >= len(source):
+                continue
+            target.append(source[positions[index]])
+            positions[index] += 1
+            selected_count += 1
+            progressed = True
+        if not progressed:
+            break
+
+    rendered = _render_memory_context(
+        selected_entities,
+        selected_relations,
+        selected_events,
+    )
+    used = estimate_tokens(settings, len(rendered))
+    while used > TOKEN_BUDGET_LIMIT and selected_count:
+        if selected_events:
+            selected_events.pop()
+        elif selected_relations:
+            selected_relations.pop()
+        else:
+            selected_entities.pop()
+        selected_count -= 1
+        rendered = _render_memory_context(
+            selected_entities,
+            selected_relations,
+            selected_events,
+        )
+        used = estimate_tokens(settings, len(rendered))
+    return selected_entities, selected_relations, selected_events, used
+
+
+async def _source_is_current(
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    source_kind: str,
+    source_id: uuid.UUID | None,
+) -> bool:
+    """Recheck the canonical domain row before returning derived context."""
+
+    if source_id is None or source_kind == "manual":
+        return True
+    if source_kind == "memory":
+        return await session.scalar(
+            select(Memory.id).where(
+                Memory.id == source_id,
+                Memory.user_id == user_id,
+                Memory.status == "active",
+                Memory.user_confirmed.is_(True),
+                Memory.deleted_at.is_(None),
+            )
+        ) is not None
+    if source_kind == "growth":
+        goal = await session.scalar(
+            select(Goal.id).where(
+                Goal.id == source_id,
+                Goal.user_id == user_id,
+                Goal.deleted_at.is_(None),
+            )
+        )
+        if goal is not None:
+            return True
+        milestone = await session.scalar(
+            select(Milestone.id)
+            .join(Goal, Goal.id == Milestone.goal_id)
+            .where(
+                Milestone.id == source_id,
+                Milestone.deleted_at.is_(None),
+                Goal.user_id == user_id,
+                Goal.deleted_at.is_(None),
+            )
+        )
+        if milestone is not None:
+            return True
+        return await session.scalar(
+            select(TaskEvent.id)
+            .join(GrowthTask, GrowthTask.id == TaskEvent.task_id)
+            .where(
+                TaskEvent.id == source_id,
+                GrowthTask.user_id == user_id,
+                GrowthTask.deleted_at.is_(None),
+            )
+        ) is not None
+    if source_kind == "english":
+        mistake = await session.scalar(
+            select(EnglishMistake.id).where(
+                EnglishMistake.id == source_id,
+                EnglishMistake.user_id == user_id,
+                EnglishMistake.deleted_at.is_(None),
+            )
+        )
+        if mistake is not None:
+            return True
+        return await session.scalar(
+            select(EnglishReview.id)
+            .join(EnglishMistake, EnglishMistake.id == EnglishReview.mistake_id)
+            .where(
+                EnglishReview.id == source_id,
+                EnglishReview.user_id == user_id,
+                EnglishMistake.deleted_at.is_(None),
+            )
+        ) is not None
+    if source_kind == "intelligence":
+        return await session.scalar(
+            select(NewsItem.id).where(
+                NewsItem.id == source_id,
+                NewsItem.user_id == user_id,
+                NewsItem.deleted_at.is_(None),
+            )
+        ) is not None
+    if source_kind == "investment":
+        thesis = await session.scalar(
+            select(InvestmentThesis.id).where(
+                InvestmentThesis.id == source_id,
+                InvestmentThesis.user_id == user_id,
+                InvestmentThesis.deleted_at.is_(None),
+                InvestmentThesis.status == "active",
+            )
+        )
+        if thesis is not None:
+            return True
+        return await session.scalar(
+            select(InvestmentReview.id).where(
+                InvestmentReview.id == source_id,
+                InvestmentReview.user_id == user_id,
+                InvestmentReview.deleted_at.is_(None),
+                InvestmentReview.status != "draft",
+            )
+        ) is not None
+    if source_kind == "conversation":
+        return await session.scalar(
+            select(StoredChatMessage.id)
+            .join(
+                ChatConversation,
+                ChatConversation.id == StoredChatMessage.conversation_id,
+            )
+            .where(
+                StoredChatMessage.id == source_id,
+                ChatConversation.user_id == user_id,
+                ChatConversation.archived_at.is_(None),
+            )
+        ) is not None
+    return False
+
+
+async def _filter_current_sources(
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    rows: list[Any],
+) -> list[Any]:
+    current: list[Any] = []
+    cache: dict[tuple[str, uuid.UUID | None], bool] = {}
+    for row in rows:
+        key = (row.source_kind, row.source_id)
+        if key not in cache:
+            cache[key] = await _source_is_current(
+                session,
+                user_id=user_id,
+                source_kind=row.source_kind,
+                source_id=row.source_id,
+            )
+        if cache[key]:
+            current.append(row)
+    return current
 
 
 async def query_network(
@@ -1116,6 +1493,7 @@ async def query_network(
     user_id: uuid.UUID,
     query: str,
     limit: int = MAX_RECALL,
+    for_cloud: bool = False,
 ) -> tuple[
     list[MemoryEntity],
     list[MemoryRelation],
@@ -1123,6 +1501,7 @@ async def query_network(
     list[dict[str, Any]],
     dict[str, int],
 ]:
+    settings = get_settings()
     limit = max(1, min(limit, MAX_RECALL))
     query_text = query.strip()
     query_key = normalize_entity_key(query_text)
@@ -1139,6 +1518,8 @@ async def query_network(
                 MemoryEntity.name.ilike(f"%{query_text}%"),
             ),
         )
+    if for_cloud:
+        entity_filter = (*entity_filter, MemoryEntity.cloud_allowed.is_(True))
     entities = list(
         await session.scalars(
             select(MemoryEntity)
@@ -1157,20 +1538,53 @@ async def query_network(
             break
         batch = list(
             await session.scalars(
-                select(MemoryRelation).where(
+                select(MemoryRelation)
+                .where(
                     MemoryRelation.user_id == user_id,
                     MemoryRelation.status == "active",
                     MemoryRelation.deleted_at.is_(None),
+                    MemoryRelation.valid_until.is_(None),
                     or_(
                         MemoryRelation.from_entity_id.in_(frontier),
                         MemoryRelation.to_entity_id.in_(frontier),
                     ),
                 )
+                .order_by(
+                    MemoryRelation.confidence.desc(),
+                    MemoryRelation.created_at.desc(),
+                )
+                .limit(MAX_RECALL * 4)
             )
         )
+        endpoint_ids = {
+            entity_id
+            for relation in batch
+            for entity_id in (relation.from_entity_id, relation.to_entity_id)
+        }
+        eligible_filter = (
+            MemoryEntity.user_id == user_id,
+            MemoryEntity.id.in_(endpoint_ids),
+            MemoryEntity.status == "active",
+            MemoryEntity.deleted_at.is_(None),
+        )
+        if for_cloud:
+            eligible_filter = (
+                *eligible_filter,
+                MemoryEntity.cloud_allowed.is_(True),
+            )
+        eligible_ids = set(
+            await session.scalars(
+                select(MemoryEntity.id).where(*eligible_filter)
+            )
+        ) if endpoint_ids else set()
         next_frontier: list[uuid.UUID] = []
         for relation in batch:
             if relation.id in seen_relation_ids:
+                continue
+            if not {
+                relation.from_entity_id,
+                relation.to_entity_id,
+            }.issubset(eligible_ids):
                 continue
             seen_relation_ids.add(relation.id)
             relations.append(relation)
@@ -1182,60 +1596,97 @@ async def query_network(
 
     involved: list[MemoryEntity] = []
     if visited:
+        involved_filter = (
+            MemoryEntity.id.in_(list(visited)),
+            MemoryEntity.user_id == user_id,
+            MemoryEntity.status == "active",
+            MemoryEntity.deleted_at.is_(None),
+        )
+        if for_cloud:
+            involved_filter = (
+                *involved_filter,
+                MemoryEntity.cloud_allowed.is_(True),
+            )
         involved = list(
             await session.scalars(
-                select(MemoryEntity).where(
-                    MemoryEntity.id.in_(list(visited)),
-                    MemoryEntity.status == "active",
-                    MemoryEntity.deleted_at.is_(None),
-                )
+                select(MemoryEntity).where(*involved_filter)
             )
         )
     involved.sort(key=lambda e: (e.importance, e.created_at), reverse=True)
 
-    all_events = list(
-        await session.scalars(
-            select(MemoryEvent).where(
-                MemoryEvent.user_id == user_id,
-                MemoryEvent.status == "active",
+    linked_events: list[MemoryEvent] = []
+    event_matches: list[Any] = []
+    if visited:
+        linked_to_active_entity = exists(
+            select(MemoryEventEntity.event_id)
+            .join(MemoryEntity, MemoryEntity.id == MemoryEventEntity.entity_id)
+            .where(
+                MemoryEventEntity.event_id == MemoryEvent.id,
+                MemoryEventEntity.user_id == user_id,
+                MemoryEventEntity.entity_id.in_(visited),
+                MemoryEntity.user_id == user_id,
+                MemoryEntity.status == "active",
+                MemoryEntity.deleted_at.is_(None),
             )
         )
-    )
-    linked_events: list[MemoryEvent] = []
-    for event in all_events:
-        linked = False
-        if event.entity_ids:
-            linked = any(
-                uuid.UUID(str(raw)) in visited for raw in event.entity_ids
+        event_matches.append(linked_to_active_entity)
+    if query_text and not for_cloud:
+        event_matches.append(MemoryEvent.summary.ilike(f"%{query_text}%"))
+    if event_matches:
+        event_statement = select(MemoryEvent).where(
+            MemoryEvent.user_id == user_id,
+            MemoryEvent.status == "active",
+            or_(*event_matches),
+        )
+        if for_cloud:
+            blocked_cloud_link = exists(
+                select(MemoryEventEntity.event_id)
+                .join(MemoryEntity, MemoryEntity.id == MemoryEventEntity.entity_id)
+                .where(
+                    MemoryEventEntity.event_id == MemoryEvent.id,
+                    MemoryEventEntity.user_id == user_id,
+                    or_(
+                        MemoryEntity.user_id != user_id,
+                        MemoryEntity.status != "active",
+                        MemoryEntity.deleted_at.is_not(None),
+                        MemoryEntity.cloud_allowed.is_(False),
+                    ),
+                )
             )
-        if linked or (
-            query_text and query_text.casefold() in event.summary.casefold()
-        ):
-            linked_events.append(event)
-    linked_events.sort(key=lambda e: e.happened_at, reverse=True)
+            event_statement = event_statement.where(not_(blocked_cloud_link))
+        linked_events = list(
+            await session.scalars(
+                event_statement
+                .order_by(MemoryEvent.happened_at.desc())
+                .limit(MAX_RECALL * 4)
+            )
+        )
 
     relations.sort(key=lambda r: r.confidence, reverse=True)
-    entities_out = involved[:limit]
-    relations_out = relations[:limit]
-    events_out = linked_events[:limit]
-
-    text_size = sum(
-        len(entity.name) for entity in entities_out
-    ) + sum(
-        len(relation.relation_type) for relation in relations_out
-    ) + sum(
-        len(event.summary) for event in events_out
+    involved = await _filter_current_sources(
+        session,
+        user_id=user_id,
+        rows=involved,
     )
-    while (
-        text_size // 4 > TOKEN_BUDGET_LIMIT
-        and (relations_out or events_out or entities_out)
-    ):
-        if events_out:
-            text_size -= len(events_out.pop().summary)
-        elif relations_out:
-            text_size -= len(relations_out.pop().relation_type)
-        else:
-            text_size -= len(entities_out.pop().name)
+    relations = await _filter_current_sources(
+        session,
+        user_id=user_id,
+        rows=relations,
+    )
+    linked_events = await _filter_current_sources(
+        session,
+        user_id=user_id,
+        rows=linked_events,
+    )
+    entities_out, relations_out, events_out, used_tokens = (
+        _apply_retrieval_budget(
+            entities=involved,
+            relations=relations,
+            events=linked_events,
+            limit=limit,
+            settings=settings,
+        )
+    )
 
     provenance: list[dict[str, Any]] = [
         {
@@ -1263,7 +1714,7 @@ async def query_network(
         for event in events_out
     ]
     token_budget = {
-        "used": min(max(text_size // 4, 0), TOKEN_BUDGET_LIMIT),
+        "used": min(max(used_tokens, 0), TOKEN_BUDGET_LIMIT),
         "limit": TOKEN_BUDGET_LIMIT,
     }
     return entities_out, relations_out, events_out, provenance, token_budget

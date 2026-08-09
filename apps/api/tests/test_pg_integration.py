@@ -9,6 +9,7 @@ the local Ollama embedding endpoint.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -687,3 +688,105 @@ async def test_memory_network_invalid_status_is_rejected(
     pg_session.add(row)
     with pytest.raises(IntegrityError):
         await pg_session.commit()
+
+
+async def test_memory_entity_concurrent_insert_converges_on_unique_identity(
+    pg_engine: AsyncEngine,
+    pg_session: AsyncSession,
+) -> None:
+    """Two real PG transactions cannot create the same current entity."""
+
+    from app.db.models import MemoryEntity
+    from app.services import memory_network_service as service
+
+    user = await create_user(pg_session)
+    factory = async_sessionmaker(pg_engine, expire_on_commit=False)
+
+    async def insert_once() -> tuple[uuid.UUID, bool]:
+        async with factory() as session:
+            entity, created = await service._ensure_entity(
+                session,
+                user_id=user.id,
+                entity_type="topic",
+                name="PG 并发唯一主题",
+                source_kind="manual",
+                source_id=None,
+            )
+            await session.commit()
+            return entity.id, created
+
+    results = await asyncio.gather(insert_once(), insert_once())
+    assert {entity_id for entity_id, _created in results} == {results[0][0]}
+    assert sorted(created for _entity_id, created in results) == [False, True]
+    rows = list(
+        await pg_session.scalars(
+            select(MemoryEntity).where(
+                MemoryEntity.user_id == user.id,
+                MemoryEntity.normalized_key == "pg 并发唯一主题".casefold(),
+                MemoryEntity.status.in_(("candidate", "active")),
+            )
+        )
+    )
+    assert len(rows) == 1
+
+
+async def test_memory_event_entity_rejects_missing_entity_fk(
+    pg_session: AsyncSession,
+) -> None:
+    from app.db.models import MemoryEvent, MemoryEventEntity
+
+    user = await create_user(pg_session)
+    event = MemoryEvent(
+        user_id=user.id,
+        event_type="goal_set",
+        happened_at=datetime.now(UTC),
+        ingested_at=datetime.now(UTC),
+        summary="PG FK event",
+        source_kind="manual",
+        status="candidate",
+    )
+    pg_session.add(event)
+    await pg_session.flush()
+    pg_session.add(
+        MemoryEventEntity(
+            user_id=user.id,
+            event_id=event.id,
+            entity_id=uuid.uuid4(),
+        )
+    )
+    with pytest.raises(IntegrityError):
+        await pg_session.commit()
+
+
+async def test_memory_network_hardening_indexes_are_used_for_lookup(
+    pg_session: AsyncSession,
+) -> None:
+    user = await create_user(pg_session)
+    await pg_session.execute(text("SET LOCAL enable_seqscan = off"))
+
+    statements = {
+        "uq_memory_entities_current_identity": text(
+            "EXPLAIN SELECT id FROM memory_entities "
+            "WHERE user_id = :user_id AND entity_type = 'topic' "
+            "AND normalized_key = 'index-check' AND deleted_at IS NULL "
+            "AND status IN ('candidate', 'active')"
+        ),
+        "uq_memory_relations_current_assertion": text(
+            "EXPLAIN SELECT id FROM memory_relations "
+            "WHERE user_id = :user_id AND from_entity_id = :entity_id "
+            "AND relation_type = 'relates_to' AND to_entity_id = :entity_id "
+            "AND deleted_at IS NULL AND valid_until IS NULL "
+            "AND status IN ('candidate', 'active')"
+        ),
+        "ix_memory_event_entities_user_entity": text(
+            "EXPLAIN SELECT event_id FROM memory_event_entities "
+            "WHERE user_id = :user_id AND entity_id = :entity_id"
+        ),
+    }
+    for index_name, statement in statements.items():
+        rows = await pg_session.execute(
+            statement,
+            {"user_id": user.id, "entity_id": uuid.uuid4()},
+        )
+        plan = "\n".join(row[0] for row in rows)
+        assert index_name in plan, plan

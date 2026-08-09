@@ -39,6 +39,7 @@ DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
 MergeTarget = Annotated[uuid.UUID, Query(..., description="目标实体 id")]
 QueryText = Annotated[str, Query()]
 QueryLimit = Annotated[int, Query(ge=1, le=12)]
+CloudContext = Annotated[bool, Query(description="仅返回允许发送到云模型的上下文")]
 
 
 def _require_enabled() -> None:
@@ -243,12 +244,19 @@ async def query_network(
     db: DatabaseSession,
     q: QueryText = "",
     limit: QueryLimit = 12,
+    for_cloud: CloudContext = False,
 ) -> MemoryNetworkQueryResponse:
-    """multi-hop 检索（≤2 hop、召回 ≤12、8K token 预算），附溯源。"""
+    """多跳检索：全局 ≤12、最终渲染 ≤8K，并可重查云端权限。"""
     _require_enabled()
     user = await current_user(db)
     entities, relations, events, provenance, token_budget = (
-        await service.query_network(db, user_id=user.id, query=q, limit=limit)
+        await service.query_network(
+            db,
+            user_id=user.id,
+            query=q,
+            limit=limit,
+            for_cloud=for_cloud,
+        )
     )
     return MemoryNetworkQueryResponse(
         entities=[_entity_dto(entity) for entity in entities],

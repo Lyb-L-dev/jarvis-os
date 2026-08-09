@@ -97,6 +97,47 @@
 - `v3_memory_network_enabled` 保持默认关闭，关闭后继续使用旧检索路径；既有 Flag-off 契约由 404 与静默降级测试覆盖；
 - 当时未单独保存完整回滚演练记录。V3-1.1 起按本文记录规则显式记录迁移回滚与 Flag-off 演练结果。
 
+## V3-1.1：记忆网络加固
+
+- 完成日期：2026-08-09
+- 状态：完成并验收；默认保持关闭，等待后续灰度启用
+- 默认 Flag：`v3_memory_network_enabled=false`
+- 相关提交：`faea836`（计划基线）及本节所在实现提交
+
+### 交付
+
+| 交付 | 证据 |
+|---|---|
+| 并发实体唯一性 | 当前 candidate/active 实体使用数据库部分唯一索引；并发冲突通过 savepoint 收敛到既有实体 |
+| 关系历史 | 当前断言使用部分唯一索引；归档记录写入 `valid_until`，允许同一关系后续重新成立 |
+| 事件实体完整性 | 新增 `memory_event_entities` 外键关联表和查询索引；保留 `entity_ids` JSON 作为兼容副本并双写 |
+| 迁移 | `0033_memory_network_hardening`，包含旧数据去重、关联回填、关系有效期修复及可逆 downgrade |
+| 全局召回预算 | 实体、关系、事件合计不超过 `limit`（接口最大 12）；8K 预算按包含溯源字段的最终 JSON 计算 |
+| 权限与来源复核 | 查询时重新检查规范来源状态；`for_cloud=true` 时排除 private 实体及包含 private 实体的关系、事件 |
+| 回归测试 | 覆盖并发收敛、关系重建、事件外键/合并传播、来源复核、云端过滤、全局数量与渲染预算 |
+
+### 验收记录
+
+- 默认 SQLite 定向测试：13 passed；
+- PostgreSQL 新增加固用例：3 passed，覆盖并发唯一性、事件外键拒绝和索引执行计划；
+- PostgreSQL 旧数据迁移诊断：重复实体收敛、事件关联重指向、关系归档和 JSON 兼容副本同步均通过；
+- PostgreSQL 迁移回滚演练：`0033 -> 0032 -> 0033` 通过，使用随机临时数据库并在结束后删除；
+- 后端回归（排除既有的静默时段墙钟敏感用例）：350 passed / 32 skipped / 1 deselected；
+- SSE/UI 定向回归：4 passed；Prompt 评测：25/25；
+- Ruff、前端 typecheck、前端 lint、备份演练 dry-run、文档 diff 检查通过；安全检查通过并保留既有 `.env` 本地读取权限警告。
+
+### 已知限制与后续边界
+
+- PostgreSQL 全量临时库运行中，5 个既有用例仍受模型与历史迁移 status 约束漂移影响；涉及 `agent_runs`、`agent_approvals`、`tool_executions`、`tool_approvals`、`memories`，不由本阶段修改引入；
+- `test_scan_route_returns_summary` 直接读取当前上海时间，在静默时段运行会失败；其余后端回归已通过；
+- Qwen、n8n/Ollama 全栈复跑仍受环境门控，不影响本阶段数据库完整性与检索预算验收；
+- 下一阶段为 V3-1.5 Router 切流与可靠事件地基，不进入 V3-2。
+
+### 回滚记录
+
+- 已在一次性 PostgreSQL 数据库实际执行 downgrade 到 `0032` 并重新 upgrade 到 `0033`，迁移链路通过；
+- `v3_memory_network_enabled` 仍为默认关闭，旧检索 Flag-off 路径保留；新关联表不会在 Flag 关闭时接管用户请求。
+
 ## 记录规则
 
 后续每个阶段只在完成验收后追加一节，至少记录：

@@ -51,6 +51,7 @@ from app.db.models.memory import Memory, MemoryRevision
 from app.db.models.memory_network import (
     MemoryEntity,
     MemoryEvent,
+    MemoryEventEntity,
     MemoryRelation,
 )
 from app.db.models.memory_shadow import MemoryShadowCandidate, MemoryShadowRun
@@ -103,6 +104,7 @@ __all__ = [
     "MemoryRevision",
     "MemoryEntity",
     "MemoryEvent",
+    "MemoryEventEntity",
     "MemoryRelation",
     "MemoryShadowCandidate",
     "MemoryShadowRun",

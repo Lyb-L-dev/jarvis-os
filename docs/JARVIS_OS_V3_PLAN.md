@@ -2,7 +2,7 @@
 
 > 版本：v1.2（2026-08-09）
 > 状态：执行中
-> 当前进度：V3-0、V3-1 已交付；下一阶段为 V3-1.1 记忆网络加固
+> 当前进度：V3-0、V3-1、V3-1.1 已交付；下一阶段为 V3-1.5 Router 切流与可靠事件地基
 > 交付证据：[JARVIS_OS_V3_DELIVERY_LOG.md](./JARVIS_OS_V3_DELIVERY_LOG.md)
 
 本文件只维护仍然有效的产品方向、架构约束、阶段依赖和验收标准。已完成阶段的提交、测试数字和环境记录统一进入交付日志；具体任务由 GitHub Issues 跟踪；长期架构决策记录在 `docs/adr/`。
@@ -299,7 +299,7 @@ V3-4a 语音和 V3-4b 页面收敛都依赖 V3-1.5 的事件/对话契约，但�
 ```mermaid
 flowchart LR
     A["V3-0 对话地基 ✅"] --> B["V3-1 记忆网络 ✅"]
-    B --> C["V3-1.1 记忆加固"]
+    B --> C["V3-1.1 记忆加固 ✅"]
     C --> D["V3-1.5 Router + Event Feed"]
     D --> E["V3-2 Orchestrator 试点"]
     E --> F["V3-3 主动智能"]
@@ -314,7 +314,7 @@ flowchart LR
 |---|---|---|---|---|
 | V3-0 ✅ | 对话聚合接口、SSE 基座、对话工作台 | `v3_dialog_workspace_enabled`、`v3_sse_enabled` | 契约、Flag 开关、旧聊天无回归 | 关闭两 Flag |
 | V3-1 ✅ | 记忆三表、候选确认、规则/Qwen 抽取、多跳检索雏形 | `v3_memory_network_enabled` | 确认前不可检索、PG 迁移、前端候选卡 | 关闭 Flag，旧检索保留 |
-| V3-1.1 | 唯一约束、关系历史、事件关联、全局召回/预算、并发测试 | 复用 `v3_memory_network_enabled` | 总召回≤12；并发不重复；历史关系可重建；PG 真库测试 | 保留旧表兼容迁移并关 Flag |
+| V3-1.1 ✅ | 唯一约束、关系历史、事件关联、全局召回/预算、并发测试 | 复用 `v3_memory_network_enabled` | 总召回≤12；并发不重复；历史关系可重建；PG 真库测试 | 保留旧表兼容迁移并关 Flag |
 | V3-1.5 | Router 真实灰度切流、PG UI 事件日志、可靠重连 | `v2_router_enforcement_enabled`、新增事件 Flag | 路由评测集；旧模型语义一致；重启续传；多 worker 前置满足 | Router 回旧链路；SSE 回 snapshot+polling |
 | V3-2 | Orchestrator 深模块、Research→Growth 草稿试点、父子 Run | `v3_orchestrator_enabled` | 50 条简单请求误触发≤2；20 条复杂场景可恢复；R2/R3 不变量全绿 | 回 Direct Runtime |
 | V3-3 | 会话级主动建议、反馈回流、去重与类别关闭 | `v3_conversational_proactive_enabled` | 后台零付费调用；静默时段；分类型采纳/忽略数据 | 回 `/proactive` 与定时扫描 |
@@ -377,15 +377,10 @@ flowchart LR
 | 页面收敛导致入口丢失 | 先补等价操作和遥测，再逐页确认，保留结构化深度查看 |
 | 语音延迟目标不可解释 | 先 Spike，按 STT/TTFT/TTS 分段报告 p50/p95 |
 
-## 11. 当前下一步：V3-1.1
+## 11. 当前下一步：V3-1.5
 
-V3-1.1 开工顺序：
+V3-1.1 已完成数据库完整性、关系历史、事件关联、全局召回预算、云端过滤和 PostgreSQL 真库验证，交付证据见 [JARVIS_OS_V3_DELIVERY_LOG.md](./JARVIS_OS_V3_DELIVERY_LOG.md)。
 
-1. 冻结记忆实体唯一性、关系历史和事件关联迁移方案；
-2. 将查询裁剪改为全局 12 项与最终 8K 上下文预算；
-3. 增加并发抽取、关系重新成立、事件外键、云端过滤和全局预算测试；
-4. 在 PostgreSQL 真库执行迁移、回滚和查询计划检查；
-5. 复跑候选确认卡与旧检索 Flag-off 路径；
-6. 验收后再启动 V3-1.5 Router 切流设计。
+V3-1.5 开工前先冻结 Router 真实切流和可靠事件日志的契约，保持 `v3_memory_network_enabled=false`，并继续复用旧检索 Flag-off 路径。V3-2 必须等待 V3-1.5 的 Router 与事件地基验收完成后再启动。
 
-V3-1.1 不新增用户可见功能，目标是让已经完成的记忆网络具备可以长期启用的完整性和可验证性。
+V3-1.5 的正式任务范围以本计划第 5.1、5.5 和第 6 节为准。
