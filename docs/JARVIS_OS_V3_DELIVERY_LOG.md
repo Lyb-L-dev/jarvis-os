@@ -281,6 +281,51 @@
 - 关闭 `v3_conversational_proactive_enabled` 后，会话 feed 与新决策/类别接口返回 404，对话工作台不展示会话建议；旧 `/proactive` 页面、接受/忽略接口和定时规则扫描继续工作；
 - 迁移与 Flag 回滚互相独立：正常灰度只需关闭 Flag，不需要立即 downgrade。
 
+## V3-4a：本地语音闭环
+
+- 完成日期：2026-08-10
+- 状态：实现与本地语音 Spike 完成；真实浏览器设备端到端性能采样环境门控
+- 默认 Flag：`v3_voice_loop_enabled=false`
+- 相关提交：本节所在实现提交
+
+### 交付
+
+| 交付 | 证据 |
+|---|---|
+| 本地语音深模块 | `VoiceLoop` 只公开状态、转写、合成和卸载能力；`LocalSherpaSpeechAdapter` 封装 PCM 校验、sherpa 配置、串行执行和模型生命周期 |
+| 本地 STT | 小型中英双语 Zipformer int8；`scripts/install-voice.ps1` 从官方 `asr-models` release 安装并校验固定文件 |
+| 本地双语 TTS | 复用既有中文/英文 VITS 模型，按原文顺序分段合成并在内存中生成 WAV |
+| 状态机 | 对话页实现 `idle -> listening -> transcribing -> responding -> speaking`；任意活动态均可取消或打断回到 idle |
+| 隐私边界 | 浏览器内存中转换 16kHz PCM；原始音频不上云、不落临时文件、业务库或事件正文；最长 60 秒 |
+| 设备与策略降级 | 麦克风权限拒绝、设备缺失、录音/转写/播放失败、静默时段均保留文本聊天；不做常驻唤醒 |
+| 生命周期 | STT/TTS 懒加载，默认空闲 300 秒后卸载；显式 unload 端点用于回滚与资源释放 |
+| 前端接入 | 现有聊天麦克风改为本地语音；移除可能调用浏览器在线服务的 Web Speech Recognition 路径 |
+| 配置与回滚 | `.env.example` 记录 Flag、模型路径和边界；关闭 Flag 后语音执行返回不可用，文本聊天保持原路径 |
+| 基准 | `scripts/benchmark-voice-loop.py` 与 `docs/V3_VOICE_BENCHMARK.md` 固定设备、模型、语料、统计口径和目标 |
+
+### 验收记录
+
+- 固定语音 Spike（Windows 11、16 逻辑处理器、Python 3.13.3、CPU）：STT 30 次 p50 148.37 ms / p95 400.56 ms；TTS 15 次 p50 709.18 ms / p95 991.13 ms；进程峰值工作集 512.96 MB；
+- 冷启动：STT 1014.50 ms；中英 TTS 双模型 1536.46 ms；
+- 仓库统一门禁完成后新增两条语音路由边界测试并复采测试全集：403 passed / 38 skipped；V3-4a 定向测试 8 passed；安全检查、Prompt/策略评测 25/25、备份演练 dry-run、前端 typecheck 与 lint 全部通过；
+- 前端 TypeScript typecheck 与 ESLint 通过；Impeccable 检测对已扫描的新增语音 UI 文件返回 0 条，目标参数中的工作台路径写错导致该单文件未扫描，已由 ESLint/typecheck 覆盖；
+- sherpa 真实适配器烟测通过：官方 WAV 成功转写，中英 TTS 成功生成内存 WAV，显式 unload 后模型状态恢复未加载；
+- Next.js 生产构建在沙箱外复验通过；首次沙箱内运行仅因既有 `.next/trace` 的 EPERM 被阻止，不是代码构建失败。
+
+### 已知限制与后续边界
+
+- LLM TTFT 与麦克风结束到首音需要已配置模型路由和真实浏览器音频设备，本轮未运行，明确不记为通过；冻结目标与补采口径见语音基准文档；
+- 固定 STT 模型语料只用于延迟复现，没有可靠参考文本，不能据此声称真实麦克风识别准确率达标；
+- 当前 TTS 在完整 WAV 生成后开始播放，尚未做流式音频；若真实设备体感 p95 超过 5 秒，优先评估句级流式播放，不扩大云端边界；
+- V3-4a 不包含常驻唤醒词、云端语音、音频持久化或 V3-4b 页面收敛；
+- V3-4b 第一批只做 `/chat` 与 `/approvals` 两个高保真原型，视觉方向经用户确认后才逐页推进。
+
+### 回滚记录
+
+- 默认 Flag 已验证为关闭；关闭时 `VoiceLoop` 在加载模型前拒绝转写，文本聊天接口和输入框不依赖语音模块；
+- 删除/不安装 STT 模型时状态端点报告本地模型未就绪，麦克风按钮禁用但文字发送可用；
+- `POST /voice/unload` 与 300 秒空闲定时器均释放 STT/TTS 引用；无需数据库 downgrade，本阶段没有 schema 迁移。
+
 ## 记录规则
 
 后续每个阶段只在完成验收后追加一节，至少记录：

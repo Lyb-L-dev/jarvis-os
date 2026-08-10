@@ -9,35 +9,12 @@ import {
   Square,
   X,
 } from "lucide-react";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 
 import { modeOptions } from "@/components/chat/chat-utils";
-import type { ModelMode } from "@/lib/api";
+import type { ModelMode, VoiceLoopState } from "@/lib/api";
 
-export function ChatComposerRegion({
-  error,
-  setError,
-  memoryNotice,
-  setMemoryNotice,
-  taskNotice,
-  setTaskNotice,
-  captureNotice,
-  setCaptureNotice,
-  listening,
-  onToggleDictation,
-  input,
-  setInput,
-  sending,
-  onSend,
-  onStop,
-  mode,
-  setMode,
-  sensitive,
-  setSensitive,
-  useKnowledge,
-  setUseKnowledge,
-  onComposerKeyDown,
-}: {
+type ComposerProps = {
   error: string | null;
   setError: (value: string | null) => void;
   memoryNotice: string | null;
@@ -46,8 +23,10 @@ export function ChatComposerRegion({
   setTaskNotice: (value: string | null) => void;
   captureNotice: string | null;
   setCaptureNotice: (value: string | null) => void;
-  listening: boolean;
-  onToggleDictation: () => void;
+  voiceState: VoiceLoopState;
+  voiceAvailable: boolean;
+  voiceReason: string | null;
+  onToggleVoice: () => void;
   input: string;
   setInput: (value: string) => void;
   sending: boolean;
@@ -60,71 +39,72 @@ export function ChatComposerRegion({
   useKnowledge: boolean;
   setUseKnowledge: (value: boolean) => void;
   onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
-}) {
+};
+
+export function ChatComposerRegion({
+  error,
+  setError,
+  memoryNotice,
+  setMemoryNotice,
+  taskNotice,
+  setTaskNotice,
+  captureNotice,
+  setCaptureNotice,
+  voiceState,
+  voiceAvailable,
+  voiceReason,
+  onToggleVoice,
+  input,
+  setInput,
+  sending,
+  onSend,
+  onStop,
+  mode,
+  setMode,
+  sensitive,
+  setSensitive,
+  useKnowledge,
+  setUseKnowledge,
+  onComposerKeyDown,
+}: ComposerProps) {
   return (
     <div className="workspace-composer-region">
       {error ? (
-        <div className="workspace-notice workspace-notice-error">
-          <span>{error}</span>
-          <button
-            aria-label="关闭错误提示"
-            onClick={() => setError(null)}
-            type="button"
-          >
-            <X aria-hidden="true" />
-          </button>
-        </div>
+        <Notice text={error} error onClose={() => setError(null)} />
       ) : null}
       {memoryNotice ? (
-        <div className="workspace-notice">
-          <BrainCircuit aria-hidden="true" />
-          <span>{memoryNotice}</span>
-          <Link href="/memory">检查记忆</Link>
-          <button
-            aria-label="关闭记忆提示"
-            onClick={() => setMemoryNotice(null)}
-            type="button"
-          >
-            <X aria-hidden="true" />
-          </button>
-        </div>
+        <Notice
+          icon={<BrainCircuit aria-hidden="true" />}
+          text={memoryNotice}
+          link={{ href: "/memory", label: "检查记忆" }}
+          onClose={() => setMemoryNotice(null)}
+        />
       ) : null}
       {taskNotice ? (
-        <div className="workspace-notice">
-          <Layers3 aria-hidden="true" />
-          <span>{taskNotice}</span>
-          <Link href="/growth">打开行动</Link>
-          <button
-            aria-label="关闭任务提示"
-            onClick={() => setTaskNotice(null)}
-            type="button"
-          >
-            <X aria-hidden="true" />
-          </button>
-        </div>
+        <Notice
+          icon={<Layers3 aria-hidden="true" />}
+          text={taskNotice}
+          link={{ href: "/growth", label: "打开行动" }}
+          onClose={() => setTaskNotice(null)}
+        />
       ) : null}
       {captureNotice ? (
-        <div className="workspace-notice">
-          <BookOpenCheck aria-hidden="true" />
-          <span>{captureNotice}</span>
-          <Link href="/knowledge">检查知识草稿</Link>
-          <button
-            aria-label="关闭知识草稿提示"
-            onClick={() => setCaptureNotice(null)}
-            type="button"
-          >
-            <X aria-hidden="true" />
-          </button>
-        </div>
+        <Notice
+          icon={<BookOpenCheck aria-hidden="true" />}
+          text={captureNotice}
+          link={{ href: "/knowledge", label: "检查知识草稿" }}
+          onClose={() => setCaptureNotice(null)}
+        />
       ) : null}
 
       <div className="workspace-composer">
         <div className="workspace-composer-input">
           <button
-            aria-label={listening ? "停止语音输入" : "开始语音输入"}
-            className={listening ? "is-listening" : ""}
-            disabled={sending}
-            onClick={onToggleDictation}
+            aria-label={voiceActionLabel(voiceState, voiceAvailable)}
+            className={voiceState === "listening" ? "is-listening" : ""}
+            disabled={!voiceAvailable && !sending}
+            onClick={onToggleVoice}
+            title={voiceTitle(voiceAvailable, voiceReason)}
             type="button"
           >
             <Mic aria-hidden="true" />
@@ -134,11 +114,7 @@ export function ChatComposerRegion({
             disabled={sending}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={onComposerKeyDown}
-            placeholder={
-              listening
-                ? "Jarvis 正在聆听…"
-                : "告诉 Jarvis 你想理解、规划或完成什么…"
-            }
+            placeholder={composerPlaceholder(voiceState)}
             rows={2}
             value={input}
           />
@@ -149,11 +125,7 @@ export function ChatComposerRegion({
             onClick={() => (sending ? onStop() : onSend())}
             type="button"
           >
-            {sending ? (
-              <Square aria-hidden="true" />
-            ) : (
-              <Send aria-hidden="true" />
-            )}
+            {sending ? <Square aria-hidden="true" /> : <Send aria-hidden="true" />}
           </button>
         </div>
 
@@ -193,13 +165,70 @@ export function ChatComposerRegion({
             <BookOpenCheck aria-hidden="true" />
             知识增强
           </label>
-          <span>
-            {sending
-              ? "结果正在生成，点击停止会自动保存已有内容"
-              : "Enter 发送 · Shift+Enter 换行"}
+          <span aria-live="polite">
+            {voiceStatusText(voiceState, sending, voiceAvailable)}
           </span>
         </div>
       </div>
     </div>
   );
+}
+
+function Notice({
+  icon,
+  text,
+  link,
+  error = false,
+  onClose,
+}: {
+  icon?: ReactNode;
+  text: string;
+  link?: { href: string; label: string };
+  error?: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <div className={`workspace-notice ${error ? "workspace-notice-error" : ""}`}>
+      {icon}
+      <span>{text}</span>
+      {link ? <Link href={link.href}>{link.label}</Link> : null}
+      <button aria-label="关闭提示" onClick={onClose} type="button">
+        <X aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
+function voiceActionLabel(state: VoiceLoopState, available: boolean): string {
+  if (!available) return "本地语音不可用";
+  if (state === "listening") return "停止录音并本地转写";
+  if (state === "responding" || state === "speaking") return "打断并重新聆听";
+  return "开始本地语音对话";
+}
+
+function voiceTitle(available: boolean, reason: string | null): string {
+  if (available) return "本地语音：音频不会发送到云端";
+  return reason === "feature_disabled"
+    ? "本地语音功能尚未启用"
+    : "本地语音模型尚未就绪";
+}
+
+function composerPlaceholder(state: VoiceLoopState): string {
+  if (state === "listening") return "Jarvis 正在本地聆听…";
+  if (state === "transcribing") return "正在本地转写…";
+  return "告诉 Jarvis 你想理解、规划或完成什么…";
+}
+
+function voiceStatusText(
+  state: VoiceLoopState,
+  sending: boolean,
+  available: boolean,
+): string {
+  if (state === "listening") return "正在聆听；再次点击麦克风即可发送";
+  if (state === "transcribing") return "音频正在本机转写，不会上传云端";
+  if (state === "responding") return "Jarvis 正在回答；点击麦克风可打断";
+  if (state === "speaking") return "正在本地播放；点击麦克风可打断";
+  if (sending) return "结果正在生成；点击停止会保留已有内容";
+  if (!available) return "本地语音未启用，文本对话仍可正常使用";
+  return "Enter 发送 · Shift+Enter 换行 · 麦克风仅在点击后工作";
 }

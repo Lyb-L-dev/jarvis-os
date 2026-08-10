@@ -2,7 +2,7 @@
 
 > 版本：v1.2（2026-08-09）
 > 状态：执行中
-> 当前进度：V3-0、V3-1、V3-1.1、V3-1.5、V3-2、V3-3 已交付；后续阶段为可并行的 V3-4a 本地语音闭环与 V3-4b 前端收敛
+> 当前进度：V3-0、V3-1、V3-1.1、V3-1.5、V3-2、V3-3、V3-4a 已交付；下一阶段先做 V3-4b 的 `/chat` 与 `/approvals` 双页高保真原型门禁
 > 交付证据：[JARVIS_OS_V3_DELIVERY_LOG.md](./JARVIS_OS_V3_DELIVERY_LOG.md)
 
 本文件只维护仍然有效的产品方向、架构约束、阶段依赖和验收标准。已完成阶段的提交、测试数字和环境记录统一进入交付日志；具体任务由 GitHub Issues 跟踪；长期架构决策记录在 `docs/adr/`。
@@ -303,7 +303,7 @@ flowchart LR
     C --> D["V3-1.5 Router + Event Feed ✅"]
     D --> E["V3-2 Orchestrator 试点 ✅"]
     E --> F["V3-3 主动智能 ✅"]
-    D --> G["V3-4a 语音闭环"]
+    D --> G["V3-4a 语音闭环 ✅"]
     D --> H["V3-4b 页面收敛"]
     F --> I["V3-5 收尾"]
     G --> I
@@ -318,8 +318,8 @@ flowchart LR
 | V3-1.5 ✅ | Router 真实灰度切流、PG UI 事件日志、可靠重连 | `v2_router_enforcement_enabled`、`v3_reliable_event_feed_enabled` | 路由评测集；旧模型语义一致；重启续传；多 worker 前置满足 | Router 回旧链路；SSE 回 snapshot+polling |
 | V3-2 ✅ | Orchestrator 深模块、Research→Growth 草稿试点、父子 Run | `v3_orchestrator_enabled` | 50 条简单请求误触发≤2；20 条复杂场景可恢复；R2/R3 不变量全绿 | 回 Direct Runtime |
 | V3-3 ✅ | 会话级主动建议、反馈回流、去重与类别关闭 | `v3_conversational_proactive_enabled` | 后台零付费调用；静默时段；分类型采纳/忽略数据 | 回 `/proactive` 与定时扫描 |
-| V3-4a | 语音 Spike、STT+LLM+TTS、打断状态机 | `v3_voice_loop_enabled` | 分段 p50/p95 延迟；CPU/内存实测；设备降级 | 关闭语音 Flag，保留文本聊天 |
-| V3-4b | 类型化 DialogCard、页面摘要、逐页收敛 | `v3_page_convergence_enabled` | 对话等价操作；路由矩阵；逐页浏览器回归 | 分页关闭，不批量回滚 |
+| V3-4a ✅ | 语音 Spike、STT+LLM+TTS、打断状态机 | `v3_voice_loop_enabled` | 分段 p50/p95 延迟；CPU/内存实测；设备降级 | 关闭语音 Flag，保留文本聊天 |
+| V3-4b | 先完成 `/chat` 与 `/approvals` 双页高保真原型，确认视觉方向后再逐页收敛 | `v3_page_convergence_enabled` | 原型确认门禁；对话等价操作；路由矩阵；逐页浏览器回归 | 原型隔离；分页关闭，不批量回滚 |
 | V3-5 | 全量回归、性能复采、死 Flag 清理、发布清单 | 稳定后清理 | `check.ps1`；PG 真库；Playwright；资源基线 | 关闭全部 V3 Flag |
 
 ## 7. 指标与验收口径
@@ -377,10 +377,10 @@ flowchart LR
 | 页面收敛导致入口丢失 | 先补等价操作和遥测，再逐页确认，保留结构化深度查看 |
 | 语音延迟目标不可解释 | 先 Spike，按 STT/TTFT/TTS 分段报告 p50/p95 |
 
-## 11. 当前下一步：V3-3
+## 11. 当前下一步：V3-4b 双页原型门禁
 
-V3-2 已完成按需 Orchestrator 深模块、父子 Run、独立 Draft Review、Research 结果到 Growth 任务草稿的首个试点，以及 PostgreSQL Checkpointer 重启恢复与迁移回滚验证，交付证据见 [JARVIS_OS_V3_DELIVERY_LOG.md](./JARVIS_OS_V3_DELIVERY_LOG.md)。
+V3-4a 已交付默认关闭的本地语音闭环，固定设备 Spike、模型与延迟目标见 [V3_VOICE_BENCHMARK.md](./V3_VOICE_BENCHMARK.md)，实现与环境门控证据见 [JARVIS_OS_V3_DELIVERY_LOG.md](./JARVIS_OS_V3_DELIVERY_LOG.md)。
 
-V3-3 开工前应先确认主动建议的会话入口、反馈观察范围和长期运行采样方案。Proactive 继续负责规则信号和轻建议，不与 Orchestrator 合并；后台零付费调用、静默时段、每日上限和“先建议、不自动创建正式任务”的边界保持不变。
+V3-4b 不直接启动整站收敛。第一批只制作 `/chat` 与 `/approvals` 两个高保真原型；在用户明确确认视觉方向以前，不修改其余页面、不删除旧入口、不批量替换全局视觉。确认后按单页 Flag、等价操作清单和逐页浏览器回归推进。
 
-V3-2 的 `v3_orchestrator_enabled` 保持默认关闭；进入 V3-3 不得顺带扩大编排试点、启用外部副作用或改变 R2/R3 策略。
+V3-4a 的 `v3_voice_loop_enabled` 继续默认关闭；进入原型阶段不得顺带启用常驻麦克风、进入 V3-5，或扩大 Orchestrator 与工具权限范围。

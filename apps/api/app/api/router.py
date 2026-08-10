@@ -30,6 +30,7 @@ from app.api.routes import (
     system,
     tools,
     ui,
+    voice,
 )
 
 api_router = APIRouter()
@@ -74,3 +75,4 @@ api_router.include_router(personality.router, tags=["personality"])
 api_router.include_router(proactive.router, tags=["proactive"])
 api_router.include_router(computer.router, tags=["computer-use"])
 api_router.include_router(ui.router, tags=["ui"])
+api_router.include_router(voice.router, tags=["voice"])

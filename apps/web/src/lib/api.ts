@@ -32,3 +32,4 @@ export * from "./api/proactive";
 export * from "./api/computer";
 export * from "./api/dialog";
 export * from "./api/orchestrator";
+export * from "./api/voice";

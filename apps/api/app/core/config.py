@@ -79,6 +79,13 @@ class Settings(BaseSettings):
     v3_orchestrator_enabled: bool = False
     v3_conversational_proactive_enabled: bool = False
     v3_proactive_expiry_hours: int = 72
+    v3_voice_loop_enabled: bool = False
+    voice_stt_model_path: str = "C:/tmp/jarvis-stt-model"
+    voice_tts_chinese_model_path: str = "C:/tmp/jarvis-voice-model"
+    voice_tts_english_model_path: str = "C:/tmp/jarvis-voice-en-model"
+    voice_model_idle_seconds: int = 300
+    voice_max_audio_seconds: int = 60
+    voice_max_text_chars: int = 2000
 
     # Sprint 27 semantic indexes are derived, local-only data. Canonical
     # memories and knowledge documents remain in their existing tables.
@@ -257,6 +264,7 @@ class Settings(BaseSettings):
                 self.v3_memory_network_enabled,
                 self.v3_orchestrator_enabled,
                 self.v3_conversational_proactive_enabled,
+                self.v3_voice_loop_enabled,
             )
         )
 
