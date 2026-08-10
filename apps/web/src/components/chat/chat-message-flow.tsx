@@ -51,8 +51,8 @@ export function ChatMessageFlow({
           <div className="workspace-welcome-core">
             <JarvisOrb state={workspaceState} />
           </div>
-          <span>GENERAL JARVIS · READY</span>
           <h2>从一个想法开始。</h2>
+          <span>Jarvis 已就绪</span>
           <p>
             这里不是普通聊天窗口。Jarvis 会保留上下文、标注真实模型，
             并把有价值的结果转化为记忆、知识或下一步行动。

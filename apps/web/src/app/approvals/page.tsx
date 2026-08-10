@@ -1,21 +1,22 @@
+import { ShieldCheck } from "lucide-react";
+
 import { ApprovalCenter } from "@/components/approval-center";
+import styles from "@/components/v3-convergence.module.css";
 
 export default function ApprovalsPage() {
   return (
-    <main className="dashboard approval-page">
-      <header className="topbar approval-topbar">
+    <main className={`dashboard approval-page ${styles.approvalInbox}`}>
+      <header className={styles.approvalLead}>
         <div>
-          <div className="eyebrow">HUMAN CONTROL PLANE</div>
-          <h1>
-            审批 <span>中心</span>
-          </h1>
-          <p className="page-description">
-            所有会改变文件、日历、邮件或外部账号的动作，都必须先在这里看清、确认，
-            再单独执行。
-          </p>
+          <h1>决定收件箱</h1>
+          <p>所有授权都有明确范围、到期时间和下一步。</p>
         </div>
-        <div className="approval-live-badge">
-          <i /> HUMAN IN CONTROL
+        <div className={styles.safetyPromise}>
+          <ShieldCheck aria-hidden="true" />
+          <span>
+            <strong>你始终拥有最后决定权</strong>
+            <small>批准不等于执行</small>
+          </span>
         </div>
       </header>
       <ApprovalCenter />

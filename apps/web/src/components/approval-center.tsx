@@ -14,6 +14,7 @@ import {
   Network,
   Play,
   RefreshCw,
+  Search,
   ShieldCheck,
   Sparkles,
   X,
@@ -62,9 +63,9 @@ function approvalKindLabel(item: ApprovalCenterItem) {
 }
 
 function approvalKindHeading(item: ApprovalCenterItem) {
-  if (item.source === "tool") return "TOOL APPROVAL";
-  if (item.source === "model") return "MODEL CONSENT";
-  return "DRAFT REVIEW";
+  if (item.source === "tool") return "工具批准";
+  if (item.source === "model") return "模型授权";
+  return "草稿审阅";
 }
 
 function approvalReason(item: ApprovalCenterItem) {
@@ -75,6 +76,18 @@ function approvalReason(item: ApprovalCenterItem) {
     return "这是付费或云端模型的单次授权，不会扩展到其他运行或数据类别。";
   }
   return "这是 R1 产品草稿审阅，只决定计划或草稿是否继续，不授予模型权限，也不会执行外部操作。";
+}
+
+function approvalScope(item: ApprovalCenterItem) {
+  if (item.source === "tool") {
+    return `允许 ${item.tool_id ?? "这个工具"} 使用当前预览的一次性范围；仍需单独执行。`;
+  }
+  if (item.source === "model") {
+    return `允许 ${item.provider ?? "所选模型"} 仅处理当前展示的数据范围一次。`;
+  }
+  return item.preview.draft_kind === "orchestration_plan"
+    ? "允许当前编排计划启动，并仅生成下一层待审阅草稿。"
+    : "允许当前草稿进入下一步审阅；不会创建正式任务或触发工具。";
 }
 
 function approvalStatusLabel(item: ApprovalCenterItem) {
@@ -103,6 +116,15 @@ function formatTime(value?: string | null) {
   }).format(new Date(value));
 }
 
+function formatExpiry(value?: string | null) {
+  if (!value) return "暂无到期项";
+  const remainingMinutes = Math.ceil((new Date(value).getTime() - Date.now()) / 60_000);
+  if (!Number.isFinite(remainingMinutes)) return "到期时间未知";
+  if (remainingMinutes <= 0) return "已到期";
+  if (remainingMinutes < 60) return `${remainingMinutes} 分钟后到期`;
+  return `${formatTime(value)} 到期`;
+}
+
 function compactHash(value?: unknown) {
   if (typeof value !== "string" || value.length < 12) return String(value ?? "—");
   return `${value.slice(0, 8)}…${value.slice(-6)}`;
@@ -119,6 +141,7 @@ export function ApprovalCenter() {
   const [provider, setProvider] = useState<N8nProviderStatus | null>(null);
   const [automationResult, setAutomationResult] = useState<Record<string, unknown> | null>(null);
   const [view, setView] = useState<ViewMode>("pending");
+  const [queueQuery, setQueueQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [path, setPath] = useState("drafts/jarvis-note.md");
   const [content, setContent] = useState("# Jarvis 草稿\n\n这是一个等待确认的本地文件预览。");
@@ -156,10 +179,25 @@ export function ApprovalCenter() {
 
   const visibleItems = useMemo(() => {
     const items = data?.items ?? [];
-    if (view === "pending") return items.filter((item) => item.status === "pending");
-    if (view === "approved") return items.filter((item) => item.status === "approved");
-    return items.filter((item) => !["pending", "approved"].includes(item.status));
-  }, [data, view]);
+    const byView = view === "pending"
+      ? items.filter((item) => item.status === "pending")
+      : view === "approved"
+        ? items.filter((item) => item.status === "approved")
+        : items.filter((item) => !["pending", "approved"].includes(item.status));
+    const query = queueQuery.trim().toLocaleLowerCase("zh-CN");
+    return byView
+      .filter((item) => !query || [
+        item.title,
+        approvalKindLabel(item),
+        item.agent_id,
+        item.risk_level,
+      ].some((value) => value.toLocaleLowerCase("zh-CN").includes(query)))
+      .sort((left, right) => {
+        const leftTime = new Date(left.expires_at ?? left.created_at).getTime();
+        const rightTime = new Date(right.expires_at ?? right.created_at).getTime();
+        return leftTime - rightTime;
+      });
+  }, [data, queueQuery, view]);
 
   const selected =
     visibleItems.find((item) => item.id === selectedId) ??
@@ -167,6 +205,10 @@ export function ApprovalCenter() {
     null;
   const liveTools = catalog.filter((item) => item.available);
   const reservedTools = catalog.filter((item) => !item.available);
+  const earliestPendingExpiry = (data?.items ?? [])
+    .filter((item) => item.status === "pending" && item.expires_at)
+    .map((item) => item.expires_at as string)
+    .sort()[0];
 
   async function withAction(key: string, action: () => Promise<unknown>, success: string) {
     setBusy(key);
@@ -280,23 +322,11 @@ export function ApprovalCenter() {
 
   return (
     <section className="approval-shell">
-      <div className="approval-metrics">
-        <article>
-          <span className="approval-metric-icon pending"><CircleDot /></span>
-          <div><small>WAITING</small><strong>{data?.pending_count ?? 0}</strong><p>等待确认</p></div>
-        </article>
-        <article>
-          <span className="approval-metric-icon approved"><ShieldCheck /></span>
-          <div><small>APPROVED</small><strong>{data?.approved_count ?? 0}</strong><p>已批准或通过</p></div>
-        </article>
-        <article>
-          <span className="approval-metric-icon history"><History /></span>
-          <div><small>AUDIT TRAIL</small><strong>{data?.history_count ?? 0}</strong><p>全部审批记录</p></div>
-        </article>
-        <article className="approval-policy-card">
-          <span className="approval-metric-icon blocked"><LockKeyhole /></span>
-          <div><small>R3 BOUNDARY</small><strong>{data?.permanent_blocks.length ?? 4}</strong><p>永不自动执行</p></div>
-        </article>
+      <div className="approval-summary-bar">
+        <span><CircleDot aria-hidden="true" /><strong>{data?.pending_count ?? 0}</strong> 待决定</span>
+        <span><ShieldCheck aria-hidden="true" /><strong>{data?.approved_count ?? 0}</strong> 已批准待执行</span>
+        <span><CalendarDays aria-hidden="true" />最早一项 <strong>{formatExpiry(earliestPendingExpiry)}</strong></span>
+        <button onClick={() => setView("history")} type="button"><History aria-hidden="true" />查看历史</button>
       </div>
 
       {(message || error) && (
@@ -314,7 +344,7 @@ export function ApprovalCenter() {
       <div className="approval-grid">
         <div className="approval-queue-panel">
           <div className="approval-panel-heading">
-            <div><small>DECISION QUEUE</small><h2>需要你决定</h2></div>
+            <div><h2>需要你决定</h2></div>
             <button aria-label="刷新审批中心" disabled={busy !== null} onClick={() => void refresh()} type="button">
               <RefreshCw className={busy ? "is-spinning" : ""} />
             </button>
@@ -330,6 +360,16 @@ export function ApprovalCenter() {
               </button>
             ))}
           </div>
+          <label className="approval-queue-search">
+            <Search aria-hidden="true" />
+            <input
+              aria-label="搜索决定"
+              onChange={(event) => setQueueQuery(event.target.value)}
+              placeholder="搜索决定、来源或风险"
+              type="search"
+              value={queueQuery}
+            />
+          </label>
           <div className="approval-queue">
             {visibleItems.length ? visibleItems.map((item) => (
               <button className={`approval-queue-item ${selected?.id === item.id ? "is-selected" : ""}`} key={item.id} onClick={() => setSelectedId(item.id)} type="button">
@@ -360,6 +400,14 @@ export function ApprovalCenter() {
               </div>
               <h2>{selected.title}</h2>
               <p className="approval-reason">{approvalReason(selected)}</p>
+
+              <div className="approval-scope-statement">
+                <ShieldCheck aria-hidden="true" />
+                <div>
+                  <small>本次决定的准确含义</small>
+                  <strong>{approvalScope(selected)}</strong>
+                </div>
+              </div>
 
               <div className="approval-preview-card">
                 <div className="approval-preview-title"><FilePenLine /><span>{selected.source === "draft" ? "审阅内容" : "执行前预览"}</span><small>{selected.source === "draft" ? "DECISION PREVIEW" : "PREVIEW · NOT EXECUTED"}</small></div>
@@ -408,6 +456,7 @@ export function ApprovalCenter() {
                 <span><small>POLICY</small>{selected.reason_code}</span>
                 <span><small>EXPIRES</small>{formatTime(selected.expires_at)}</span>
               </div>
+              <p className="approval-action-footnote">每个决定都写入本地审计记录，可随时查看来源与结果。</p>
             </motion.div>
           ) : (
             <div className="approval-empty inspector-empty"><Sparkles /><strong>安全边界正在运行</strong><p>选择一条记录，可以检查预览、风险和授权范围。</p></div>
@@ -418,7 +467,7 @@ export function ApprovalCenter() {
       <div className="approval-lower-grid">
         <form className="approval-simulator" onSubmit={(event) => void submitPreview(event)}>
           <div className="approval-panel-heading">
-            <div><small>SAFE TOOL LAB</small><h2>创建本地文件预览</h2></div>
+            <div><h2>创建本地文件预览</h2></div>
             <span className="approval-risk risk-r2">R2</span>
           </div>
           <p>这里只生成预览，不写文件。批准后仍需在“待执行”中再确认一次。</p>
@@ -429,7 +478,7 @@ export function ApprovalCenter() {
         </form>
 
         <div className="approval-boundary-panel">
-          <div className="approval-panel-heading"><div><small>POLICY MATRIX</small><h2>不可越过的边界</h2></div><LockKeyhole /></div>
+          <div className="approval-panel-heading"><div><h2>不可越过的边界</h2></div><LockKeyhole /></div>
           <div className="approval-risk-scale">
             <div><span className="risk-r0">R0</span><strong>读取</strong><p>可自动执行，保留审计。</p></div>
             <div><span className="risk-r1">R1</span><strong>内部草稿</strong><p>可自动生成，不对外发送。</p></div>
@@ -452,7 +501,6 @@ export function ApprovalCenter() {
         <div className="automation-provider-heading">
           <div className="automation-provider-mark"><Network /></div>
           <div>
-            <small>AUTOMATION PROVIDER · N8N</small>
             <h2>隔离自动化通道</h2>
             <p>只开放本机签名入口。当前没有真实外部账号，也不允许外部写入。</p>
           </div>

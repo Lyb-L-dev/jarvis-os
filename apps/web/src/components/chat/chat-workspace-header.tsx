@@ -20,6 +20,8 @@ export function ChatWorkspaceHeader({
   capturing,
   onCapture,
   onArchive,
+  showSessionsButton = true,
+  label = "AI WORKSPACE",
 }: {
   detail: ConversationDetail | null;
   sending: boolean;
@@ -35,21 +37,25 @@ export function ChatWorkspaceHeader({
   capturing: boolean;
   onCapture: () => void;
   onArchive: () => void;
+  showSessionsButton?: boolean;
+  label?: string | null;
 }) {
   return (
     <header className="workspace-header">
       <div className="workspace-identity">
-        <button
-          aria-label="打开对话记录"
-          className="workspace-sessions-button"
-          onClick={onOpenSessions}
-          type="button"
-        >
-          <Menu aria-hidden="true" />
-          <span>对话记录</span>
-        </button>
+        {showSessionsButton ? (
+          <button
+            aria-label="打开对话记录"
+            className="workspace-sessions-button"
+            onClick={onOpenSessions}
+            type="button"
+          >
+            <Menu aria-hidden="true" />
+            <span>对话记录</span>
+          </button>
+        ) : null}
         <div>
-          <span>AI WORKSPACE</span>
+          {label ? <span>{label}</span> : null}
           {renaming && detail ? (
             <div className="workspace-title-editor">
               <input

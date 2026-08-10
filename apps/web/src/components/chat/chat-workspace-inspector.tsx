@@ -26,12 +26,12 @@ export function ChatWorkspaceInspector({
   return (
     <aside className="workspace-inspector">
       <div className="workspace-core-presence">
-        <span>JARVIS PRESENCE</span>
+        <span>今天的脉络</span>
         <AIStatus state={workspaceState} />
       </div>
 
       <div className="workspace-inspector-section">
-        <span>SESSION CONTEXT</span>
+        <span>当前对话</span>
         <div className="workspace-context-list">
           <div>
             <BrainCircuit aria-hidden="true" />
@@ -67,7 +67,7 @@ export function ChatWorkspaceInspector({
       <div className="workspace-boundary-note">
         <ShieldCheck aria-hidden="true" />
         <div>
-          <strong>Safe execution boundary</strong>
+          <strong>数据与执行边界</strong>
           <p>
             Jarvis 会展示模型、知识来源和执行结果，但不会暴露私人推理正文，
             也不会未经确认执行高风险操作。
