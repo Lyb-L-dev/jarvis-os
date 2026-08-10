@@ -1,6 +1,18 @@
 import { ApprovalCenter } from "@/components/approval-center";
+import { ApprovalsV3Prototype } from "@/app/approvals/v3-approvals-prototype";
 
-export default function ApprovalsPage() {
+export default async function ApprovalsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ variant?: string }>;
+}) {
+  const { variant } = await searchParams;
+  if (
+    process.env.NODE_ENV !== "production" &&
+    (variant === "A" || variant === "B" || variant === "C")
+  ) {
+    return <ApprovalsV3Prototype variant={variant} />;
+  }
   return (
     <main className="dashboard approval-page">
       <header className="topbar approval-topbar">
