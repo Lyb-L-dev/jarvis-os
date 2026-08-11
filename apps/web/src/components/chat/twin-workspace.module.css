@@ -1207,6 +1207,10 @@
     margin-left: 0;
   }
 
+  :global(.app-shell):has(.twinWorkspace) :global(.sidebar-toggle) {
+    display: none;
+  }
+
   .twinWorkspace {
     margin-left: 0;
   }

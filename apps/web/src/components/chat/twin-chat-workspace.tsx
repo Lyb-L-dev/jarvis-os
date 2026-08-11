@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import type { AIState } from "@/components/ai/AIStatus";
+import { useSidebarControlRegistration } from "@/components/app-shell";
 import { ChatComposerRegion } from "@/components/chat/chat-composer-region";
 import { ChatMessageFlow } from "@/components/chat/chat-message-flow";
 import { ChatSessionDrawer } from "@/components/chat/chat-session-drawer";
@@ -89,6 +90,7 @@ export function TwinChatWorkspace({
   messageEndRef,
   onStartNewConversation,
 }: TwinChatWorkspaceProps) {
+  useSidebarControlRegistration();
   const workspace = useTwinWorkspaceState(list.activeId);
   const [menuSide, setMenuSide] = useState<WorkspaceSide | null>(null);
   const isMobile = useSyncExternalStore(

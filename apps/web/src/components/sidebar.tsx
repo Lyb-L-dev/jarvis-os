@@ -123,7 +123,7 @@ function routeIsActive(pathname: string, href: string) {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ hidden }: { hidden: boolean }) {
   const pathname = usePathname();
   const reducedMotion = useReducedMotion();
   const [coreStatus, setCoreStatus] = useState<
@@ -151,7 +151,7 @@ export function Sidebar() {
     };
   }, [refreshCoreStatus]);
 
-  if (pathname.startsWith("/tablet")) {
+  if (hidden) {
     return null;
   }
 
@@ -159,6 +159,7 @@ export function Sidebar() {
     <motion.aside
       animate={{ opacity: 1, x: 0 }}
       className="sidebar"
+      id="jarvis-sidebar"
       initial={reducedMotion ? false : { opacity: 0, x: -18 }}
       transition={{ damping: 28, stiffness: 240, type: "spring" }}
     >

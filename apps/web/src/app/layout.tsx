@@ -2,9 +2,8 @@ import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import type { Metadata, Viewport } from "next";
 
+import { AppShell } from "@/components/app-shell";
 import { Providers } from "@/components/providers";
-import { Sidebar } from "@/components/sidebar";
-import { AppHeader } from "@/components/app-header";
 
 // 本地中文字体（思源黑体 Noto Sans SC，随应用打包，完全离线）
 import "@fontsource/noto-sans-sc/latin-400.css";
@@ -42,11 +41,7 @@ export default function RootLayout({
     >
       <body>
         <Providers>
-          <div className="app-shell">
-            <Sidebar />
-            <AppHeader />
-            {children}
-          </div>
+          <AppShell>{children}</AppShell>
         </Providers>
       </body>
     </html>

@@ -22106,6 +22106,44 @@ select {
   gap: 14px;
 }
 
+.sidebar-toggle {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  color: #8b949e;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.025);
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.sidebar-toggle:hover {
+  color: #d9fafc;
+  background: rgba(34, 211, 238, 0.055);
+  border-color: rgba(34, 211, 238, 0.16);
+}
+
+.sidebar-toggle svg {
+  width: 17px;
+  height: 17px;
+}
+
+.app-shell[data-sidebar-state="hidden"] > .app-header {
+  margin-left: 0;
+}
+
+.app-shell[data-sidebar-state="hidden"] > main {
+  width: 100% !important;
+  margin-left: 0 !important;
+}
+
 .app-header-core {
   display: inline-flex;
   align-items: center;
@@ -22202,6 +22240,12 @@ select {
 @media (max-width: 1240px) {
   .app-header {
     margin-left: 286px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-toggle {
+    transition-duration: 0.01ms;
   }
 }
 

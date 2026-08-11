@@ -80,11 +80,27 @@ function Test-EnvFlag {
     return $null -ne $match
 }
 
+$pageConvergenceEnabled = Test-EnvFlag -Name "V3_PAGE_CONVERGENCE_ENABLED"
+if ($pageConvergenceEnabled) {
+    $env:V3_PAGE_CONVERGENCE_ENABLED = "true"
+    $InterfaceUrl = "http://127.0.0.1:3000/chat"
+}
+else {
+    $env:V3_PAGE_CONVERGENCE_ENABLED = "false"
+    $InterfaceUrl = "http://127.0.0.1:3000"
+}
+
 if (-not (Test-Path -LiteralPath $PythonPath)) {
     throw "Jarvis dependencies are missing. Run scripts\setup.ps1 first."
 }
 
 New-Item -ItemType Directory -Path $RuntimeDirectory -Force | Out-Null
+
+$existingRuntime = $null
+if (Test-Path -LiteralPath $RuntimeFile) {
+    $existingRuntime = Get-Content -LiteralPath $RuntimeFile -Raw -Encoding UTF8 |
+        ConvertFrom-Json
+}
 
 docker version *> $null
 if ($LASTEXITCODE -ne 0) {
@@ -193,15 +209,11 @@ if (-not (Get-ListeningProcessId -Port 8000)) {
 Wait-ForUrl -Url "http://127.0.0.1:8000/api/v1/health/live" -Name "Jarvis Core"
 
 $companionProcess = $null
-if (Test-Path -LiteralPath $RuntimeFile) {
-    $existingRuntime = Get-Content -LiteralPath $RuntimeFile -Raw -Encoding UTF8 |
-        ConvertFrom-Json
-    if ($existingRuntime.companion_pid) {
-        $candidate = Get-Process -Id ([int]$existingRuntime.companion_pid) `
-            -ErrorAction SilentlyContinue
-        if ($candidate -and $candidate.ProcessName -eq "python") {
-            $companionProcess = $candidate
-        }
+if ($existingRuntime -and $existingRuntime.companion_pid) {
+    $candidate = Get-Process -Id ([int]$existingRuntime.companion_pid) `
+        -ErrorAction SilentlyContinue
+    if ($candidate -and $candidate.ProcessName -eq "python") {
+        $companionProcess = $candidate
     }
 }
 if (-not $companionProcess) {
@@ -219,15 +231,11 @@ if (-not $companionProcess) {
 }
 
 $backupProcess = $null
-if (Test-Path -LiteralPath $RuntimeFile) {
-    $existingRuntime = Get-Content -LiteralPath $RuntimeFile -Raw -Encoding UTF8 |
-        ConvertFrom-Json
-    if ($existingRuntime.backup_pid) {
-        $candidate = Get-Process -Id ([int]$existingRuntime.backup_pid) `
-            -ErrorAction SilentlyContinue
-        if ($candidate -and $candidate.ProcessName -eq "powershell") {
-            $backupProcess = $candidate
-        }
+if ($existingRuntime -and $existingRuntime.backup_pid) {
+    $candidate = Get-Process -Id ([int]$existingRuntime.backup_pid) `
+        -ErrorAction SilentlyContinue
+    if ($candidate -and $candidate.ProcessName -eq "powershell") {
+        $backupProcess = $candidate
     }
 }
 if (-not $backupProcess) {
@@ -255,7 +263,62 @@ if (-not $backupProcess) {
 }
 
 $buildId = Join-Path $WebDirectory ".next\BUILD_ID"
-if ($Rebuild -or -not (Test-Path -LiteralPath $buildId)) {
+$needsWebBuild = $Rebuild -or -not (Test-Path -LiteralPath $buildId)
+if (-not $needsWebBuild) {
+    $buildTime = (Get-Item -LiteralPath $buildId).LastWriteTimeUtc
+    $webInputs = @()
+    foreach ($relativeDirectory in @("src", "public")) {
+        $inputDirectory = Join-Path $WebDirectory $relativeDirectory
+        if (Test-Path -LiteralPath $inputDirectory) {
+            $webInputs += Get-ChildItem -LiteralPath $inputDirectory -Recurse -File
+        }
+    }
+    $webInputs += Get-ChildItem -LiteralPath $WebDirectory -File |
+        Where-Object {
+            $_.Name -match `
+                "^(package(-lock)?\.json|next\.config\..+|postcss\.config\..+|tsconfig\.json)$"
+        }
+    $newerInput = $webInputs |
+        Where-Object { $_.LastWriteTimeUtc -gt $buildTime } |
+        Select-Object -First 1
+    if ($newerInput) {
+        Write-Host "Jarvis interface sources changed after the last build."
+        $needsWebBuild = $true
+    }
+}
+
+$previousPageConvergenceEnabled = $null
+if ($existingRuntime) {
+    $flagProperty = $existingRuntime.PSObject.Properties[
+        "page_convergence_enabled"
+    ]
+    if ($flagProperty) {
+        $previousPageConvergenceEnabled = [bool]$flagProperty.Value
+    }
+}
+$webConfigurationChanged =
+    $null -eq $previousPageConvergenceEnabled -or
+    $previousPageConvergenceEnabled -ne $pageConvergenceEnabled
+
+$webProcessId = Get-ListeningProcessId -Port 3000
+if ($webProcessId -and ($needsWebBuild -or $webConfigurationChanged)) {
+    if (
+        -not $existingRuntime -or
+        -not $existingRuntime.web_pid -or
+        [int]$existingRuntime.web_pid -ne $webProcessId
+    ) {
+        throw "Port 3000 is used by an untracked process; refusing to restart it."
+    }
+    $webProcess = Get-Process -Id $webProcessId -ErrorAction SilentlyContinue
+    if (-not $webProcess -or $webProcess.ProcessName -ne "node") {
+        throw "Port 3000 is not owned by the tracked Jarvis interface."
+    }
+    Write-Host "Restarting Jarvis interface to apply source or configuration changes..."
+    Stop-Process -Id $webProcessId -Force
+    Start-Sleep -Seconds 1
+}
+
+if ($needsWebBuild) {
     Write-Host "Building Jarvis interface..."
     Push-Location $WebDirectory
     try {
@@ -274,7 +337,7 @@ if (-not (Get-ListeningProcessId -Port 3000)) {
         -ArgumentList @("run", "start") `
         -WorkingDirectory $WebDirectory
 }
-Wait-ForUrl -Url "http://127.0.0.1:3000" -Name "Jarvis interface"
+Wait-ForUrl -Url $InterfaceUrl -Name "Jarvis interface"
 
 $runtime = @{
     api_pid = Get-ListeningProcessId -Port 8000
@@ -282,6 +345,7 @@ $runtime = @{
     companion_pid = $companionProcess.Id
     backup_pid = $backupProcess.Id
     browser_worker_pid = if ($browserWorkerProcess) { $browserWorkerProcess.Id } else { $null }
+    page_convergence_enabled = $pageConvergenceEnabled
     started_at = (Get-Date).ToString("o")
 }
 [System.IO.File]::WriteAllText(
@@ -291,7 +355,7 @@ $runtime = @{
 )
 
 Write-Host ""
-Write-Host "Jarvis OS is ready: http://127.0.0.1:3000"
+Write-Host "Jarvis OS is ready: $InterfaceUrl"
 if (-not $NoBrowser) {
-    Start-Process "http://127.0.0.1:3000"
+    Start-Process $InterfaceUrl
 }

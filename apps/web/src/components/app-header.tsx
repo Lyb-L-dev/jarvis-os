@@ -1,10 +1,11 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { Bell, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { StatusPulse } from "@/components/motion/StatusPulse";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getHeaderStatus, type HeaderStatusResponse } from "@/lib/api";
 import { providerDisplayNames } from "@/lib/utils";
 
@@ -19,7 +20,17 @@ const CORE_META: Record<CoreState, { label: string }> = {
 
 const PROVIDER_LABEL: Record<string, string> = providerDisplayNames;
 
-export function AppHeader() {
+type AppHeaderProps = {
+  onToggleSidebar: () => void;
+  showSidebarToggle: boolean;
+  sidebarHidden: boolean;
+};
+
+export function AppHeader({
+  onToggleSidebar,
+  showSidebarToggle,
+  sidebarHidden,
+}: AppHeaderProps) {
   const [status, setStatus] = useState<HeaderStatusResponse | null>(null);
   const [coreState, setCoreState] = useState<CoreState>("checking");
   const [clock, setClock] = useState<Date | null>(null);
@@ -59,6 +70,29 @@ export function AppHeader() {
   return (
     <header className={`app-header header-core-${coreState}`}>
       <div className="app-header-left">
+        {showSidebarToggle ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                aria-controls="jarvis-sidebar"
+                aria-expanded={!sidebarHidden}
+                aria-label={sidebarHidden ? "显示侧边栏" : "隐藏侧边栏"}
+                className="sidebar-toggle"
+                onClick={onToggleSidebar}
+                type="button"
+              >
+                {sidebarHidden ? (
+                  <PanelLeftOpen aria-hidden="true" />
+                ) : (
+                  <PanelLeftClose aria-hidden="true" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {sidebarHidden ? "显示侧边栏" : "隐藏侧边栏"}
+            </TooltipContent>
+          </Tooltip>
+        ) : null}
         <span className="app-header-core">
           <StatusPulse
             size={8}
