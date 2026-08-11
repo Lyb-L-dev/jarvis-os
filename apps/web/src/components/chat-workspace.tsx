@@ -18,6 +18,7 @@ import { ChatWorkspaceHeader } from "@/components/chat/chat-workspace-header";
 import { ChatWorkspaceInspector } from "@/components/chat/chat-workspace-inspector";
 import { DialogWorkspacePanel } from "@/components/chat/dialog-workspace-panel";
 import { MemoryCandidatePanel } from "@/components/chat/memory-candidate-panel";
+import { TwinChatWorkspace } from "@/components/chat/twin-chat-workspace";
 import { useChatStream } from "@/components/chat/use-chat-stream";
 import { useConversationList } from "@/components/chat/use-conversation-list";
 import { useVoiceLoop } from "@/components/chat/use-voice-loop";
@@ -38,7 +39,11 @@ function todayLabel() {
   }).format(new Date());
 }
 
-export function ChatWorkspace() {
+export function ChatWorkspace({
+  layout = "timeline",
+}: {
+  layout?: "timeline" | "twin";
+}) {
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const messageEndRef = useRef<HTMLDivElement>(null);
@@ -92,6 +97,23 @@ export function ChatWorkspace() {
         createError instanceof Error ? createError.message : "创建对话失败",
       );
     }
+  }
+
+  if (layout === "twin") {
+    return (
+      <TwinChatWorkspace
+        error={error}
+        setError={setError}
+        input={input}
+        setInput={setInput}
+        list={list}
+        stream={stream}
+        voice={voice}
+        workspaceState={workspaceState}
+        messageEndRef={messageEndRef}
+        onStartNewConversation={() => void startNewConversation()}
+      />
+    );
   }
 
   const recentConversations = list.conversations

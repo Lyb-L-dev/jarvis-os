@@ -1,0 +1,237 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-10T21:50:48+08:00",
+  "title": "Design System: Jarvis OS",
+  "extensions": {
+    "colorMeta": {
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Private Canvas",
+        "canonical": "#09090b",
+        "tonalRamp": ["#09090b", "#18181b", "#27272a", "#3f3f46", "#71717a", "#a1a1aa", "#d4d4d8", "#f4f4f5"]
+      },
+      "canvas-deep": {
+        "role": "neutral",
+        "displayName": "Deep Canvas",
+        "canonical": "#07070a",
+        "tonalRamp": ["#07070a", "#141419", "#25252b", "#3b3b43", "#676771", "#9999a2", "#ceced3", "#f2f2f4"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Quiet Surface",
+        "canonical": "#111116",
+        "tonalRamp": ["#0a0a0e", "#111116", "#232329", "#3a3a42", "#65656f", "#9797a0", "#cdccd2", "#f2f1f4"]
+      },
+      "surface-raised": {
+        "role": "neutral",
+        "displayName": "Raised Surface",
+        "canonical": "#18181b",
+        "tonalRamp": ["#0c0c0e", "#18181b", "#2a2a2f", "#424249", "#6d6d76", "#9e9ea6", "#d1d1d6", "#f3f3f5"]
+      },
+      "field": {
+        "role": "neutral",
+        "displayName": "Working Field",
+        "canonical": "#11171e",
+        "tonalRamp": ["#080c10", "#11171e", "#202b36", "#374653", "#62717d", "#94a0a9", "#cad0d5", "#eff2f4"]
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Primary Text",
+        "canonical": "#f4f4f5",
+        "tonalRamp": ["#242426", "#414144", "#626266", "#85858a", "#aaaab0", "#ccccd0", "#e4e4e7", "#f4f4f5"]
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Secondary Text",
+        "canonical": "#a1a1aa",
+        "tonalRamp": ["#1f1f23", "#37373d", "#55555d", "#74747d", "#92929c", "#a1a1aa", "#d0d0d5", "#f1f1f3"]
+      },
+      "workspace-secondary": {
+        "role": "neutral",
+        "displayName": "Workspace Secondary",
+        "canonical": "#98a2aa",
+        "tonalRamp": ["#1b2024", "#30383e", "#4b565e", "#68747d", "#849099", "#98a2aa", "#cbd0d4", "#eff1f2"]
+      },
+      "energy": {
+        "role": "primary",
+        "displayName": "Jarvis Energy",
+        "canonical": "#22d3ee",
+        "tonalRamp": ["#062a31", "#07505d", "#08788b", "#0ea5bd", "#22d3ee", "#66e2f3", "#a5f3fc", "#e6fbfe"]
+      },
+      "energy-hot": {
+        "role": "primary",
+        "displayName": "Energy Hot",
+        "canonical": "#a5f3fc",
+        "tonalRamp": ["#12353a", "#1d5961", "#2a7f89", "#47aab5", "#72d5df", "#a5f3fc", "#caf8fd", "#eefcfe"]
+      },
+      "energy-deep": {
+        "role": "primary",
+        "displayName": "Energy Deep",
+        "canonical": "#0891b2",
+        "tonalRamp": ["#03242e", "#044355", "#05637b", "#0784a2", "#0891b2", "#39b7cf", "#83d9e7", "#d8f4f8"]
+      },
+      "action-fill": {
+        "role": "primary",
+        "displayName": "Primary Action Beam",
+        "canonical": "linear-gradient(135deg, #8aeeff, #48d2eb)",
+        "tonalRamp": ["linear-gradient(135deg, #0b3038, #092832)", "linear-gradient(135deg, #135360, #0d4b59)", "linear-gradient(135deg, #1b7889, #126e80)", "linear-gradient(135deg, #289eaf, #1d96aa)", "linear-gradient(135deg, #48c4d4, #2dbbd0)", "linear-gradient(135deg, #8aeeff, #48d2eb)", "linear-gradient(135deg, #bcf6ff, #91e9f4)", "linear-gradient(135deg, #ebfcff, #d9f8fc)"]
+      },
+      "violet": {
+        "role": "secondary",
+        "displayName": "Operational Violet",
+        "canonical": "#6366f1",
+        "tonalRamp": ["#17173c", "#26275e", "#383a83", "#4c4eae", "#6366f1", "#8b8df6", "#b8b9fa", "#ececfe"]
+      },
+      "blue": {
+        "role": "secondary",
+        "displayName": "Evidence Blue",
+        "canonical": "#3b82f6",
+        "tonalRamp": ["#0c2448", "#123b73", "#1a54a2", "#246dd1", "#3b82f6", "#78aaf9", "#b2d0fc", "#e7f0ff"]
+      },
+      "success": {
+        "role": "tertiary",
+        "displayName": "Verified Green",
+        "canonical": "#62e4aa",
+        "tonalRamp": ["#0d3124", "#16533d", "#207758", "#329b75", "#62e4aa", "#91edc4", "#bef5dc", "#eafcf4"]
+      },
+      "warning": {
+        "role": "tertiary",
+        "displayName": "Review Amber",
+        "canonical": "#f6bd68",
+        "tonalRamp": ["#3b2810", "#67451b", "#936328", "#c18439", "#f6bd68", "#f9d08f", "#fbe2ba", "#fff5e7"]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Boundary Red",
+        "canonical": "#ff667a",
+        "tonalRamp": ["#42131b", "#71212e", "#a13142", "#d14458", "#ff667a", "#ff91a0", "#ffbdc5", "#ffecef"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Rare overview statements and major empty-state moments." },
+      "headline": { "displayName": "Headline", "purpose": "Page and inspector titles." },
+      "title": { "displayName": "Title", "purpose": "Section and major panel headings." },
+      "body": { "displayName": "Body", "purpose": "Primary reading copy and assistant responses." },
+      "label": { "displayName": "Label", "purpose": "Controls, navigation, panel metadata, and secondary copy." },
+      "measurement": { "displayName": "Measurement", "purpose": "Time, model tags, identifiers, tokens, and machine state." }
+    },
+    "shadows": [
+      { "name": "shell-ambient", "value": "0 32px 100px rgba(0, 0, 0, 0.42), inset 0 1px rgba(255, 255, 255, 0.045)", "purpose": "Floating global sidebar and shell-level surfaces only." },
+      { "name": "inspector-ambient", "value": "0 24px 80px rgba(0, 0, 0, 0.18)", "purpose": "Genuinely raised inspector or approval regions." },
+      { "name": "action-energy", "value": "0 8px 28px rgba(86, 228, 255, 0.12)", "purpose": "Primary cyan action emphasis." },
+      { "name": "menu-raised", "value": "0 18px 44px rgba(0, 0, 0, 0.42)", "purpose": "Temporary menus above workspace panels." }
+    ],
+    "motion": [
+      { "name": "fast", "value": "150ms", "purpose": "Hover and focus-state feedback." },
+      { "name": "base", "value": "300ms", "purpose": "Ordinary component transitions." },
+      { "name": "slow", "value": "500ms", "purpose": "Large shell or orchestration state transitions." },
+      { "name": "ease-apple", "value": "cubic-bezier(0.32, 0.72, 0, 1)", "purpose": "Shared decelerating motion." },
+      { "name": "workspace-deck", "value": "220ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Mobile context-panel drawer movement." }
+    ],
+    "breakpoints": [
+      { "name": "wide-workspace", "value": "1480px" },
+      { "name": "compact-shell", "value": "1240px" },
+      { "name": "workspace-without-sidebar", "value": "1100px" },
+      { "name": "mobile-workspace", "value": "760px" },
+      { "name": "compact-mobile", "value": "480px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single meaningful next action on an operating surface.",
+      "html": "<button class=\"ds-btn-primary\">确认并继续</button>",
+      "css": ".ds-btn-primary { min-height: 39px; padding: 0 16px; color: #071016; border: 0; border-radius: 9px; background: linear-gradient(135deg, #8aeeff, #48d2eb); box-shadow: 0 8px 28px rgba(86, 228, 255, 0.12); font: 650 12px/1 Geist, 'Noto Sans SC', sans-serif; cursor: pointer; transition: filter 150ms ease, transform 150ms ease; } .ds-btn-primary:hover { filter: brightness(1.06); transform: translateY(-1px); } .ds-btn-primary:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; } .ds-btn-primary:active { transform: translateY(0); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "A reversible supporting action that remains quieter than the task's primary action.",
+      "html": "<button class=\"ds-btn-ghost\">查看证据</button>",
+      "css": ".ds-btn-ghost { min-height: 39px; padding: 0 16px; color: #a1a1aa; border: 1px solid rgba(255,255,255,0.08); border-radius: 9px; background: rgba(255,255,255,0.025); font: 500 12px/1 Geist, 'Noto Sans SC', sans-serif; cursor: pointer; transition: color 150ms ease, border-color 150ms ease, background 150ms ease; } .ds-btn-ghost:hover { color: #f4f4f5; border-color: rgba(255,255,255,0.16); background: rgba(255,255,255,0.05); } .ds-btn-ghost:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }"
+    },
+    {
+      "name": "Active Navigation Item",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "A quiet shell navigation row with a cyan-toned active surface.",
+      "html": "<a class=\"ds-nav-active\" href=\"#\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 5h16v14H4zM7 9h10M7 13h7\"/></svg><span>Conversation</span></a>",
+      "css": ".ds-nav-active { position: relative; display: flex; align-items: center; gap: 12px; min-height: 39px; padding: 0 12px; color: #f4f4f5; border-radius: 12px; background: linear-gradient(90deg, rgba(34,211,238,0.12), rgba(34,211,238,0.025)); font: 500 12px/1 Geist, sans-serif; text-decoration: none; transition: background 150ms ease; } .ds-nav-active svg { width: 17px; fill: none; stroke: #22d3ee; stroke-width: 1.6; } .ds-nav-active:hover { background: linear-gradient(90deg, rgba(34,211,238,0.17), rgba(34,211,238,0.04)); } .ds-nav-active:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }"
+    },
+    {
+      "name": "Operating Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "A flat evidence surface with a tonal fill and fine structural boundary.",
+      "html": "<section class=\"ds-panel\"><h3>本地知识</h3><p>3 条可追踪来源已就绪</p></section>",
+      "css": ".ds-panel { padding: 22px; color: #f4f4f5; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; background: #111116; font-family: Geist, 'Noto Sans SC', sans-serif; } .ds-panel h3 { margin: 0; font-size: 16px; font-weight: 600; } .ds-panel p { margin: 8px 0 0; color: #a1a1aa; font-size: 12px; line-height: 1.6; } .ds-panel:focus-within { border-color: rgba(34,211,238,0.28); }"
+    },
+    {
+      "name": "Conversation Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A full-width dark working field that remains visually anchored at the bottom of the conversation.",
+      "html": "<label class=\"ds-field\"><span>告诉 Jarvis 你想理解、规划或完成什么</span><textarea rows=\"2\" placeholder=\"输入任务…\"></textarea></label>",
+      "css": ".ds-field { display: grid; gap: 8px; padding: 12px; color: #98a2aa; border: 1px solid rgba(213,226,232,0.18); border-radius: 12px; background: #11171e; font: 500 10px/1.35 Geist, 'Noto Sans SC', sans-serif; } .ds-field textarea { min-height: 48px; padding: 0; resize: vertical; color: #f4f4f5; border: 0; outline: 0; background: transparent; font: 400 15px/1.6 Geist, 'Noto Sans SC', sans-serif; } .ds-field textarea::placeholder { color: #8d98a1; } .ds-field:focus-within { border-color: rgba(34,211,238,0.55); outline: 2px solid rgba(34,211,238,0.18); outline-offset: 1px; }"
+    },
+    {
+      "name": "System Status Chip",
+      "kind": "chip",
+      "description": "A compact semantic status with a literal colored dot.",
+      "html": "<span class=\"ds-status-ready\"><i></i>在线</span>",
+      "css": ".ds-status-ready { display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 0 10px; color: #a1a1aa; border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; background: rgba(255,255,255,0.025); font: 500 12px/1 Geist, 'Noto Sans SC', sans-serif; } .ds-status-ready i { width: 7px; height: 7px; border-radius: 50%; background: #62e4aa; box-shadow: 0 0 10px #62e4aa; } .ds-status-ready:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }"
+    },
+    {
+      "name": "Context Panel Header",
+      "kind": "custom",
+      "description": "The identity and lifecycle controls for a temporary context card.",
+      "html": "<header class=\"ds-context-head\"><span class=\"ds-context-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 7h16v12H4zM8 7V4h8v3M8 11h8\"/></svg></span><div><strong>CareerRadar</strong><small>企业、岗位与匹配证据</small></div><button aria-label=\"关闭面板\">×</button></header>",
+      "css": ".ds-context-head { --tone: #22d3ee; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 9px; min-height: 58px; padding: 9px 10px; color: #f4f4f5; border: 1px solid color-mix(in srgb, var(--tone) 28%, #28323c); border-radius: 12px 12px 0 0; background: #0f141a; font-family: Geist, 'Noto Sans SC', sans-serif; } .ds-context-icon { display: grid; width: 31px; height: 31px; place-items: center; color: var(--tone); border: 1px solid color-mix(in srgb, var(--tone) 32%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--tone) 9%, transparent); } .ds-context-icon svg { width: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; } .ds-context-head strong,.ds-context-head small { display: block; } .ds-context-head strong { font-size: 12px; } .ds-context-head small { margin-top: 3px; color: #98a2aa; font-size: 10px; } .ds-context-head button { width: 28px; height: 28px; color: #98a2aa; border: 1px solid rgba(213,226,232,0.11); border-radius: 7px; background: #10151c; cursor: pointer; } .ds-context-head button:hover { color: #f4f4f5; border-color: rgba(213,226,232,0.2); } .ds-context-head button:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }"
+    },
+    {
+      "name": "Workspace Focus Rail",
+      "kind": "custom",
+      "description": "A compact representation of a collapsed context or action wing.",
+      "html": "<button class=\"ds-focus-rail\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 5h14v14H5zM9 9h6M9 13h6\"/></svg><small>成长</small></button>",
+      "css": ".ds-focus-rail { --tone: #62e4aa; display: grid; place-items: center; width: 40px; min-height: 45px; padding: 5px 2px; color: var(--tone); border: 1px solid color-mix(in srgb, var(--tone) 24%, #29323b); border-radius: 8px; background: #10151c; cursor: pointer; } .ds-focus-rail svg { width: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; } .ds-focus-rail small { color: #a0a9b0; font: 500 10px/1 Geist, 'Noto Sans SC', sans-serif; } .ds-focus-rail:hover { background: color-mix(in srgb, var(--tone) 7%, #10151c); } .ds-focus-rail:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Evidence Console",
+    "overview": "Jarvis OS feels like a private systems console that happens to be conversational: dark enough for sustained desktop use, restrained enough that real evidence remains the visual focus, and precise enough that state, provenance, and permission boundaries are immediately legible. Cyan marks system energy and interaction, while green, amber, red, violet, and blue carry specific operational meaning rather than decorative variety. The interface is dense but not cryptic. Thin boundaries, tonal surface changes, compact controls, real lists, and measured motion communicate hierarchy without turning every datum into a card. The shared shell remains recognizable across full pages and temporary workspaces; route-specific compositions such as the /chat twin wings stay in their surface brief instead of becoming universal page templates.",
+    "keyCharacteristics": [
+      "Near-black canvases with quiet, stepped surfaces.",
+      "Evidence-first lists and inspectors rather than summary decoration.",
+      "Cyan for system energy and primary interaction, with semantic status colors kept literal.",
+      "Workhorse sans typography for reading and mono only for measurements, identifiers, and machine state.",
+      "Fine borders and tonal layering before ambient shadow.",
+      "Responsive task continuity: desktop density collapses into rails, drawers, and focused mobile surfaces."
+    ],
+    "rules": [
+      { "name": "The Cyan Has a Job Rule", "body": "Cyan identifies system energy, focus, or a meaningful action; it is not a general decoration color.", "section": "colors" },
+      { "name": "The Status Is Literal Rule", "body": "Green means ready or complete, amber means pending or degraded, and red means error or blocked. Never swap them for visual variety.", "section": "colors" },
+      { "name": "The Readable Before Compact Rule", "body": "Functional labels and explanatory text remain readable at the real breakpoint; density is created through spacing and hierarchy, not sub-legible type.", "section": "typography" },
+      { "name": "The Mono Means Machine Rule", "body": "Use mono only when the content is measured, coded, timed, versioned, or machine-generated.", "section": "typography" },
+      { "name": "The Center Owns Continuity Rule", "body": "When a surface has a primary working object—conversation, inspector, document, or timeline—it retains readable width before supporting regions do.", "section": "layout" },
+      { "name": "The Tonal Before Shadow Rule", "body": "Add a new surface level with color and a fine boundary before adding a shadow. A shadow must describe real elevation or interaction state.", "section": "elevation" },
+      { "name": "The Radius Follows Scale Rule", "body": "Small controls stay compact, panels stay gently rounded, and shell-level surfaces receive the largest radius. Do not apply one universal radius everywhere.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do make data provenance, readiness, selection, and approval boundaries visible beside the content they affect.",
+      "Do use real lists, previews, empty states, and recovery actions instead of decorative metrics.",
+      "Do preserve keyboard focus, readable labels, and task state when a desktop region becomes a rail or mobile drawer.",
+      "Do let a single semantic tone identify a temporary panel while the global cyan voice remains reserved for system interaction.",
+      "Do keep meaningful actions synchronized with the user's current task and keep low-level filtering local."
+    ],
+    "donts": [
+      "Don't use cyan, green, amber, or red interchangeably for visual variety.",
+      "Don't promote every piece of content into a same-size card; use lists, inspectors, and open working space.",
+      "Don't use mono for ordinary prose or decorative technical styling.",
+      "Don't let temporary UI state masquerade as persisted domain truth or bypass approval boundaries.",
+      "Don't inherit legacy sub-10px functional labels or eyebrow/kicker patterns as new system primitives; they are existing debt, not the quality bar."
+    ]
+  }
+}

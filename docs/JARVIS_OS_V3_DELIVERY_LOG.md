@@ -326,6 +326,52 @@
 - 删除/不安装 STT 模型时状态端点报告本地模型未就绪，麦克风按钮禁用但文字发送可用；
 - `POST /voice/unload` 与 300 秒空闲定时器均释放 STT/TTS 引用；无需数据库 downgrade，本阶段没有 schema 迁移。
 
+## V3-4b：对话驱动的混合双翼工作台
+
+- 完成日期：2026-08-10
+- 状态：生产前端、真实 API 联机与浏览器门禁完成；Flag 保持默认关闭，等待实际灰度观察
+- 默认 Flag：`V3_PAGE_CONVERGENCE_ENABLED=false`
+- 相关提交：本节所在实现提交
+
+### 交付
+
+| 交付 | 证据 |
+|---|---|
+| 原型决策 | `/chat?variant=A/B/C` 提供三套开发环境隔离原型；用户确认 A 平衡双翼为骨架、B 单侧聚焦、C 错位卡片栈的混合方向 |
+| 真实聊天内核 | 中央工作区复用既有会话列表、流式回答、模型模式、语音、记忆候选、知识沉淀和消息转任务，不复制第二套聊天状态 |
+| 双侧面板栈 | 新会话默认不预铺模块；左侧按任务出现 CareerRadar / Memory / Knowledge，右侧按任务出现 Growth / Orchestrator / Approval；每侧最多 3 个，支持置顶、前后台切换、关闭、恢复和最近使用 |
+| 真实只读数据 | 六个面板分别调用现有领域 API；数据选择与解释请求可进入真实对话，Approval 不提供快捷批准或隐式授权 |
+| 意图联动 | 对话提交前使用确定性高置信关键词把相关面板切到前台；同一对话中手动关闭的面板不会被自动重开 |
+| 生命周期 | 面板顺序、置顶和最近使用保存在浏览器本地；同一对话的手动关闭抑制按会话保存在 sessionStorage 并跨刷新生效；未固定面板 30 分钟无活动关闭；每侧第 4 个面板替换最久未使用且未固定项 |
+| 响应式 | 宽屏双侧展开，普通笔记本自动保留一侧与另一侧轨道；手机底部切换当前面板，空白时提供资料/行动入口，并以不可穿透焦点的侧滑卡片栈展示 |
+| 灰度回滚 | `V3_PAGE_CONVERGENCE_ENABLED` 默认关闭；开发使用 `/chat?workspace=twin`；关闭 Flag 立即回到旧时间线布局，原结构化页面全部保留 |
+| 设计记录 | `PRODUCT.md` 固化产品真相；`.impeccable/surfaces/apps-web-src-app-chat-page-tsx.md` 记录 `/chat` Surface Brief；根目录 `DESIGN.md` 与 `.impeccable/design.json` 从已交付实现提取全局视觉系统和可复用组件 |
+
+### 验收记录
+
+- 前端 TypeScript typecheck 与 ESLint 通过；Impeccable detector 对生产新增 UI 返回 0 条；
+- Next.js 16.2.12 生产构建通过，`/chat` 以动态路由生成；临时构建目录已清理，生成器对 `next-env.d.ts` 与 `tsconfig.json` 的改动已还原；
+- Playwright 在 1720×1000、1280×900、390×844 三种视口完成定稿走查；手机面板打开后位于 `x=7`、宽 358px，关闭态两个离屏面板均为 inert；
+- 六个生产面板均通过真实 API 浏览器联机覆盖；CareerRadar 渲染 1 条真实演练岗位，Growth 渲染真实空目标/任务状态，Memory、Knowledge、Orchestrator、Approval 均完成接口与渲染；
+- 浏览器交互验证通过：空白状态 0 个预加载卡片、同会话手动关闭跨刷新保留、手动恢复清除抑制、31 分钟未固定面板在加载时立即清理、手机焦点进入与归还、默认关闭 Flag 回退旧聊天；页面和非预期响应错误为 0；
+- 既有可选 `/ui/dialog` 与 `/memory-network/candidates` 在对应后端 Flag 关闭时仍返回预期 404；它们不属于六个侧面板，本次没有把这些基线请求记为新实现错误；
+- 开发入口 `/chat?workspace=twin` 返回 HTTP 200；最终截图位于忽略提交的 `artifacts/v3-4b-prototype/production-final-*.png`；
+- 生产构建产物中已检索到 `jarvis-chat-twin-v3-4b` 设计契约；契约明确记录 A+B+C 用户决策来源，未虚构 concept seed。
+- Impeccable finish reviewer 最终 disposition 为 `ship`，FINISH 原文、生产产物命中与回归均为 resolved/none，无剩余 material findings；documenter 子代理超时后按降级流程完成同格式 `DESIGN.md` 与 sidecar，并通过 JSON 结构和 canonical heading 校验。
+
+### 已知限制与后续边界
+
+- 低置信意图的“建议打开”仍等待 Router 提供稳定置信度，不用前端猜测替代；
+- “话题彻底结束”尚无后端事件，当前只实现同对话手动关闭抑制和 30 分钟无活动关闭；
+- 当前真库中 Career 有 1 条演练岗位，Growth 无活跃目标，Memory 为空；已保留真实完成态与空态证据，但更高数据密度仍需在灰度期继续观察；
+- 当前不下线旧 `/chat` 时间线或任何领域页面，不接入新的写接口，不扩大 R1/R2/R3 权限边界。
+
+### 回滚记录
+
+- Flag 默认关闭，旧时间线仍是正式入口；开发查询参数只在非 production 环境生效；
+- 双翼状态只保存在浏览器本地，不是业务事实源；清除 `jarvis:twin-workspace:v2` 与 `jarvis:twin-workspace:closed:*` 即可恢复默认状态；
+- 原型、生产双翼和旧时间线三条路径相互隔离，关闭 Flag 不需要数据库迁移或后端回滚。
+
 ## 记录规则
 
 后续每个阶段只在完成验收后追加一节，至少记录：
