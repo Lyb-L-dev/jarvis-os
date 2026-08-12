@@ -11,6 +11,7 @@
     "verify:sidebar": "node scripts/verify-sidebar-toggle.mjs",
     "verify:v3-4b": "node scripts/verify-v3-4b-visible.mjs --expect=enabled",
     "verify:v3-4b:intents": "node scripts/verify-v3-4b-intents.mjs",
+    "verify:v3-4b:observation": "node scripts/verify-v3-4b-observation.mjs",
     "verify:v3-4b:rollback": "node scripts/verify-v3-4b-visible.mjs --expect=disabled"
   },
   "dependencies": {

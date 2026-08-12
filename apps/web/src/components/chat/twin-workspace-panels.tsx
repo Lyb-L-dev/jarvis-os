@@ -22,6 +22,7 @@ import {
   WORKSPACE_PANELS,
   type WorkspacePanelId,
 } from "@/components/chat/twin-workspace-config";
+import { recordPanelObservation } from "@/components/chat/twin-workspace-observation";
 import { getCareerOverview, type CareerOverview } from "@/lib/api/career";
 import {
   getGrowthOverview,
@@ -232,7 +233,18 @@ function QueryState({
 function PanelFooter({ panelId }: { panelId: WorkspacePanelId }) {
   const panel = WORKSPACE_PANELS[panelId];
   return (
-    <Link className={styles.panelDeepLink} href={panel.href}>
+    <Link
+      className={styles.panelDeepLink}
+      href={panel.href}
+      onClick={() =>
+        recordPanelObservation({
+          eventType: "panel_deep_link",
+          panelId,
+          side: panel.side,
+          target: panel.href,
+        })
+      }
+    >
       打开完整页面
       <ArrowUpRight aria-hidden="true" />
     </Link>

@@ -6,6 +6,7 @@ import { AnimatePresence } from "motion/react";
 import {
   Check,
   ChevronsLeftRight,
+  Download,
   History,
   Maximize2,
   Minimize2,
@@ -30,6 +31,14 @@ import {
   type WorkspacePanelId,
   type WorkspaceSide,
 } from "@/components/chat/twin-workspace-config";
+import {
+  createTwinWorkspaceObservationSession,
+  downloadTwinWorkspaceObservations,
+  recordIntentObservation,
+  recordPanelObservation,
+  recordWorkspaceSnapshot,
+  setTwinWorkspaceObservationSession,
+} from "@/components/chat/twin-workspace-observation";
 import {
   TwinWorkspacePanelContent,
   WorkspacePanelIcon,
@@ -100,10 +109,23 @@ export function TwinChatWorkspace({
   );
   const lastMobileTriggerRef = useRef<HTMLButtonElement | null>(null);
   const processedUserMessageRef = useRef<string | null>(null);
+  const observationConversationRef = useRef<string | null | undefined>(undefined);
   const activatePanelFromIntent = workspace.activatePanel;
   const closeMobileWorkspacePanel = workspace.closeMobilePanel;
   const workspaceHydrated = workspace.hydrated;
   const workspaceMobileOpenSide = workspace.mobileOpenSide;
+
+  useEffect(() => {
+    const conversationId = list.activeId ?? null;
+    if (observationConversationRef.current === conversationId) return;
+    observationConversationRef.current = conversationId;
+    setTwinWorkspaceObservationSession(createTwinWorkspaceObservationSession());
+  }, [list.activeId]);
+
+  useEffect(() => {
+    if (!workspaceHydrated) return;
+    recordWorkspaceSnapshot({ left: workspace.left, right: workspace.right });
+  }, [workspace.left, workspace.right, workspaceHydrated]);
 
   useEffect(() => {
     if (!workspaceHydrated) return;
@@ -143,6 +165,12 @@ export function TwinChatWorkspace({
   ) {
     const side = WORKSPACE_PANELS[panelId].side;
     lastMobileTriggerRef.current = trigger;
+    recordPanelObservation({
+      eventType: "panel_opened",
+      panelId,
+      side,
+      source: "manual",
+    });
     workspace.activatePanel(panelId);
     workspace.openSide(side);
     window.requestAnimationFrame(() => {
@@ -171,21 +199,54 @@ export function TwinChatWorkspace({
     window.requestAnimationFrame(() => lastMobileTriggerRef.current?.focus());
   }
 
-  function revealPanelsForPrompt(prompt: string) {
-    detectWorkspacePanels(prompt).forEach((panelId) =>
-      workspace.activatePanel(panelId, "intent"),
+  function openPanelManually(panelId: WorkspacePanelId) {
+    const side = WORKSPACE_PANELS[panelId].side;
+    recordPanelObservation({
+      eventType: "panel_opened",
+      panelId,
+      side,
+      source: "manual",
+    });
+    workspace.activatePanel(panelId);
+  }
+
+  function closePanel(panelId: WorkspacePanelId) {
+    recordPanelObservation({
+      eventType: "panel_closed",
+      panelId,
+      side: WORKSPACE_PANELS[panelId].side,
+    });
+    workspace.closePanel(panelId);
+  }
+
+  function revealPanelsForPrompt(prompt: string, source: "composer" | "panel_sync") {
+    const panelIds = detectWorkspacePanels(prompt);
+    const suppressedPanelIds = panelIds.filter((panelId) =>
+      workspace.manualClosed.includes(panelId),
     );
+    recordIntentObservation({ panelIds, source, suppressedPanelIds });
+    panelIds.forEach((panelId) => {
+      if (!suppressedPanelIds.includes(panelId)) {
+        recordPanelObservation({
+          eventType: "panel_opened",
+          panelId,
+          side: WORKSPACE_PANELS[panelId].side,
+          source: "intent",
+        });
+      }
+      workspace.activatePanel(panelId, "intent");
+    });
   }
 
   function submitComposer() {
     const prompt = input.trim();
     if (!prompt) return;
-    revealPanelsForPrompt(prompt);
+    revealPanelsForPrompt(prompt, "composer");
     void stream.submitMessage();
   }
 
   function submitPanelPrompt(prompt: string) {
-    revealPanelsForPrompt(prompt);
+    revealPanelsForPrompt(prompt, "panel_sync");
     void stream.submitMessage(prompt);
   }
 
@@ -239,8 +300,8 @@ export function TwinChatWorkspace({
         mobileOpenSide={workspace.mobileOpenSide}
         pinned={workspace.pinned}
         side="left"
-        onActivate={workspace.activatePanel}
-        onClose={workspace.closePanel}
+        onActivate={openPanelManually}
+        onClose={closePanel}
         onCloseMobile={closeMobilePanel}
         onFocus={workspace.openSide}
         onMenuChange={(open) => setMenuSide(open ? "left" : null)}
@@ -253,7 +314,7 @@ export function TwinChatWorkspace({
         activeIds={workspace.left}
         side="left"
         onActivate={(panelId) => {
-          workspace.activatePanel(panelId);
+          openPanelManually(panelId);
           workspace.openSide("left");
         }}
       />
@@ -274,6 +335,15 @@ export function TwinChatWorkspace({
             <button onClick={() => list.setShowSessions(true)} type="button">
               <History aria-hidden="true" />
               对话记录
+            </button>
+            <button
+              aria-label="导出 V3-4b 灰度观察记录"
+              onClick={downloadTwinWorkspaceObservations}
+              title="导出不含对话正文的本地灰度观察记录"
+              type="button"
+            >
+              <Download aria-hidden="true" />
+              导出观察
             </button>
             <button
               disabled={stream.sending}
@@ -366,6 +436,12 @@ export function TwinChatWorkspace({
         activeIds={workspace.right}
         side="right"
         onActivate={(panelId) => {
+          recordPanelObservation({
+            eventType: "panel_opened",
+            panelId,
+            side: "right",
+            source: "manual",
+          });
           workspace.activatePanel(panelId);
           workspace.openSide("right");
         }}
@@ -380,8 +456,8 @@ export function TwinChatWorkspace({
         mobileOpenSide={workspace.mobileOpenSide}
         pinned={workspace.pinned}
         side="right"
-        onActivate={workspace.activatePanel}
-        onClose={workspace.closePanel}
+        onActivate={openPanelManually}
+        onClose={closePanel}
         onCloseMobile={closeMobilePanel}
         onFocus={workspace.openSide}
         onMenuChange={(open) => setMenuSide(open ? "right" : null)}

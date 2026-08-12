@@ -83,10 +83,6 @@ try {
     const state = await page.evaluate(() =>
       JSON.parse(window.localStorage.getItem("jarvis:twin-workspace:v2") || "{}"),
     );
-    const stopButton = page.getByRole("button", { name: "停止生成" });
-    if (await stopButton.isVisible().catch(() => false)) {
-      await stopButton.click();
-    }
     const actual = [...(state.left || []), ...(state.right || [])];
     results.push({
       name: testCase.name,
@@ -106,12 +102,12 @@ try {
     throw new Error(`V3-4b intent matrix failed: ${failed.map((item) => item.name).join(", ")}.`);
   }
 } finally {
-  const cleanupContext = await browser.newContext();
   for (const conversationId of createdConversationIds) {
-    await cleanupContext.request
-      .post(`${apiUrl}/chat/conversations/${conversationId}/archive`)
-      .catch(() => null);
+    await fetch(`${apiUrl}/chat/conversations/${conversationId}/archive`, {
+      method: "POST",
+    }).catch(() => null);
   }
-  await cleanupContext.close();
-  await browser.close();
+  if (browser.isConnected()) {
+    await browser.close();
+  }
 }
