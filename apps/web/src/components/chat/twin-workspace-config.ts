@@ -95,6 +95,14 @@ const PANEL_INTENT_TERMS: Record<WorkspacePanelId, string[]> = {
   approval: ["审批", "授权", "批准", "待确认", "执行确认"],
 };
 
+function includesIntentTerm(input: string, term: string) {
+  if (!/^[a-z0-9]+$/i.test(term)) {
+    return input.includes(term);
+  }
+  const pattern = new RegExp(`(^|[^a-z0-9])${term}([^a-z0-9]|$)`, "i");
+  return pattern.test(input);
+}
+
 export function detectWorkspacePanels(input: string): WorkspacePanelId[] {
   const normalized = input.trim().toLowerCase();
   if (!normalized) return [];
@@ -102,7 +110,7 @@ export function detectWorkspacePanels(input: string): WorkspacePanelId[] {
   return (Object.keys(PANEL_INTENT_TERMS) as WorkspacePanelId[]).filter(
     (panelId) =>
       PANEL_INTENT_TERMS[panelId].some((term) =>
-        normalized.includes(term.toLowerCase()),
+        includesIntentTerm(normalized, term.toLowerCase()),
       ),
   );
 }
