@@ -22,7 +22,41 @@ try {
     .count();
   const decks = await page.locator("[data-workspace-deck]").count();
   const timeline = await page.locator("main.chat-page").count();
+  let panelDeepLinks = null;
   let rollbackSidebar = null;
+
+  if (expectedState === "enabled") {
+    const expectedPanelDeepLinks = {
+      CareerRadar: "/career",
+      长期记忆: "/memory",
+      本地知识: "/knowledge",
+      成长计划: "/growth",
+      任务编排: "/observatory",
+      审批中心: "/approvals",
+    };
+    panelDeepLinks = {};
+    for (const [title, expectedHref] of Object.entries(expectedPanelDeepLinks)) {
+      const side = ["CareerRadar", "长期记忆", "本地知识"].includes(title)
+        ? "资料与上下文"
+        : "行动与结果";
+      await page
+        .getByRole("button", { name: `打开${side}面板选择器` })
+        .click();
+      await page.locator("button").filter({ hasText: title }).last().click();
+      const deck = page.locator(
+        `[data-workspace-deck][data-side="${side === "资料与上下文" ? "left" : "right"}"]`,
+      );
+      const actualHref = await deck
+        .getByRole("link", { name: "打开完整页面" })
+        .getAttribute("href");
+      panelDeepLinks[title] = actualHref;
+      if (actualHref !== expectedHref) {
+        throw new Error(
+          `${title} deep link mismatch: expected ${expectedHref}, received ${actualHref}.`,
+        );
+      }
+    }
+  }
 
   if (expectedState === "disabled") {
     await page.evaluate(() => {
@@ -42,6 +76,7 @@ try {
     contract,
     decks,
     timeline,
+    panelDeepLinks,
     rollbackSidebar,
   }));
   const valid = expectedState === "enabled"

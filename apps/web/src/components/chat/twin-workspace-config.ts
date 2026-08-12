@@ -64,7 +64,7 @@ export const WORKSPACE_PANELS: Record<
     title: "任务编排",
     shortTitle: "编排",
     description: "研究与成长工作流状态",
-    href: "/agents",
+    href: "/observatory",
     tone: "cyan",
   },
   approval: {
