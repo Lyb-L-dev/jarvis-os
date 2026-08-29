@@ -136,6 +136,11 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         "MonitorEvent",
         cascade="all, delete-orphan",
     )
+    learning_modules: Mapped[list[Any]] = relationship(
+        "LearningModule",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 
 class UserProfile(UUIDPrimaryKeyMixin, TimestampMixin, Base):

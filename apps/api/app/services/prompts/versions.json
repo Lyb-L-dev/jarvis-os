@@ -24,7 +24,9 @@
     "intelligence.editor": "2.0.0",
     "intelligence.editor_user": "2.0.0",
     "english.rewrite": "2.0.0",
-    "evaluation.harness": "2.0.0"
+    "evaluation.harness": "2.0.0",
+    "learning.grader_shadow": "2.0.0",
+    "learning.question_shadow": "2.0.0"
   },
   "agent_prompts": {
     "jarvis_core": "personality.chat_system",
@@ -35,6 +37,30 @@
     "investment_intelligence": "intelligence.editor"
   },
   "prompts": [
+    {
+      "id": "learning.question_shadow",
+      "version": "2.0.0",
+      "kind": "user",
+      "agent_id": null,
+      "purpose": "学习教练影子出题（learning_shadow.py，生成候选题目，人工取舍后才可进入验收）",
+      "status": "active",
+      "content_ref": "templates/learning/question_shadow-v2.0.0.toml",
+      "variables": ["module_name", "module_description", "concepts", "count"],
+      "safety_tags": ["untrusted_input", "local_only", "no_pii"],
+      "created_at": "2026-08-29T00:00:00Z"
+    },
+    {
+      "id": "learning.grader_shadow",
+      "version": "2.0.0",
+      "kind": "user",
+      "agent_id": null,
+      "purpose": "学习教练影子判分（learning_shadow.py，与 rule_v1 并行对比、不接管）",
+      "status": "active",
+      "content_ref": "templates/learning/grader_shadow-v2.0.0.toml",
+      "variables": ["module_name", "level_name", "question", "expected_points", "answer"],
+      "safety_tags": ["untrusted_input", "local_only", "no_pii"],
+      "created_at": "2026-08-29T00:00:00Z"
+    },
     {
       "id": "personality.boundaries",
       "version": "2.0.0",

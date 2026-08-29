@@ -47,6 +47,19 @@ from app.db.models.knowledge import (
     KnowledgeSyncLog,
     KnowledgeVaultConfig,
 )
+from app.db.models.learning import (
+    LearningDayLog,
+    LearningGraderShadow,
+    LearningMasteryObservation,
+    LearningMasteryState,
+    LearningModule,
+    LearningQuestionCandidate,
+    LearningReviewCard,
+    LearningReviewLog,
+    LearningScheduleBlock,
+    LearningVerification,
+    LearningVerificationItem,
+)
 from app.db.models.memory import Memory, MemoryRevision
 from app.db.models.memory_network import (
     MemoryEntity,
@@ -125,6 +138,17 @@ __all__ = [
     "KnowledgeInsightCandidate",
     "KnowledgeSyncLog",
     "KnowledgeVaultConfig",
+    "LearningDayLog",
+    "LearningGraderShadow",
+    "LearningMasteryObservation",
+    "LearningMasteryState",
+    "LearningModule",
+    "LearningQuestionCandidate",
+    "LearningReviewCard",
+    "LearningReviewLog",
+    "LearningScheduleBlock",
+    "LearningVerification",
+    "LearningVerificationItem",
     "NewsItem",
     "NewsItemLink",
     "NewsSource",

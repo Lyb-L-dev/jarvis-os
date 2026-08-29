@@ -13,6 +13,7 @@ from app.api.routes import (
     intelligence,
     investment,
     knowledge,
+    learning,
     memory,
     memory_network,
     memory_shadow,
@@ -52,6 +53,7 @@ api_router.include_router(research.router, tags=["research"])
 api_router.include_router(investment.router, tags=["investment"])
 api_router.include_router(monitoring.router, tags=["monitoring"])
 api_router.include_router(knowledge.router, prefix="/knowledge", tags=["knowledge"])
+api_router.include_router(learning.router, tags=["learning"])
 api_router.include_router(memory.router, prefix="/memories", tags=["memories"])
 api_router.include_router(
     memory_network.router,
