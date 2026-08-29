@@ -1,4 +1,8 @@
-import { API_BASE_URL, responseError } from "./client";
+import {
+  apiUrl,
+  responseError,
+  runtimeRequestHeaders,
+} from "./client";
 
 export type VoiceLoopState =
   | "idle"
@@ -28,8 +32,9 @@ export type VoiceTranscription = {
 export async function getVoiceLoopStatus(
   signal?: AbortSignal,
 ): Promise<VoiceLoopStatus> {
-  const response = await fetch(`${API_BASE_URL}/voice/status`, {
+  const response = await fetch(apiUrl("/voice/status"), {
     cache: "no-store",
+    headers: runtimeRequestHeaders(),
     signal,
   });
   if (!response.ok) throw await responseError(response, "Checking local voice");
@@ -40,9 +45,12 @@ export async function transcribeLocalVoice(
   wav: Blob,
   signal?: AbortSignal,
 ): Promise<VoiceTranscription> {
-  const response = await fetch(`${API_BASE_URL}/voice/transcriptions`, {
+  const response = await fetch(apiUrl("/voice/transcriptions"), {
     method: "POST",
-    headers: { "Content-Type": "audio/wav" },
+    headers: {
+      ...runtimeRequestHeaders(),
+      "Content-Type": "audio/wav",
+    },
     body: wav,
     signal,
   });
@@ -54,9 +62,12 @@ export async function synthesizeLocalVoice(
   text: string,
   signal?: AbortSignal,
 ): Promise<Blob> {
-  const response = await fetch(`${API_BASE_URL}/voice/synthesis`, {
+  const response = await fetch(apiUrl("/voice/synthesis"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      ...runtimeRequestHeaders(),
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ text }),
     signal,
   });

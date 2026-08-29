@@ -25,6 +25,14 @@ class VoiceLoopStatus(BaseModel):
     reason: str | None = None
 
 
+class VoiceReadiness(BaseModel):
+    enabled: bool
+    local_only: bool = True
+    stt_ready: bool
+    tts_ready: bool
+    reason: str | None = None
+
+
 class VoiceTranscription(BaseModel):
     text: str
     processing_ms: float

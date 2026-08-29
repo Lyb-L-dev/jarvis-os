@@ -169,6 +169,7 @@ class NotificationDelivery(APIModel):
     priority: int
     category: str
     sensitive: bool
+    attempt_count: int
     voice_rate: int
     voice_volume: int
     voice_engine: VoiceEngine
@@ -195,6 +196,7 @@ class NotificationAcknowledgeRequest(APIModel):
 
 class NotificationSnoozeRequest(APIModel):
     minutes: int = Field(ge=5, le=1_440)
+    action_id: str | None = Field(default=None, min_length=16, max_length=80)
 
 
 class CompanionDeviceResponse(APIModel):

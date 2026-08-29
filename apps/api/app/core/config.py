@@ -27,7 +27,10 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     api_host: str = "127.0.0.1"
     api_port: int = 8000
-    web_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    web_origins: str = (
+        "http://localhost:3000,http://127.0.0.1:3000,http://tauri.localhost"
+    )
+    desktop_session_token: SecretStr | None = None
 
     database_url: str = "sqlite+aiosqlite:///./.data/jarvis.db"
     auto_create_schema: bool = False
@@ -80,6 +83,10 @@ class Settings(BaseSettings):
     v3_conversational_proactive_enabled: bool = False
     v3_proactive_expiry_hours: int = 72
     v3_voice_loop_enabled: bool = False
+    # V5 learning coach flags (contract frozen in JARVIS_OS_V5_PLAN.md, 2026-08-29).
+    v5_learning_coach_enabled: bool = False
+    v5_learning_coach_llm_shadow_enabled: bool = False
+    v5_learning_schedule_enabled: bool = False
     voice_stt_model_path: str = "C:/tmp/jarvis-stt-model"
     voice_tts_chinese_model_path: str = "C:/tmp/jarvis-voice-model"
     voice_tts_english_model_path: str = "C:/tmp/jarvis-voice-en-model"

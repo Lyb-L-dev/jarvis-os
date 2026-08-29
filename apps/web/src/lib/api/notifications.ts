@@ -166,12 +166,13 @@ export async function createReminder(payload: {
 export async function snoozeReminder(
   notificationId: string,
   minutes: number,
+  actionId?: string,
 ): Promise<JarvisNotification> {
   return request<JarvisNotification>(
     `${API_BASE_URL}/notifications/${notificationId}/snooze`,
     {
       method: "POST",
-      body: { minutes },
+      body: { minutes, action_id: actionId },
       action: "Snoozing reminder",
     },
   );

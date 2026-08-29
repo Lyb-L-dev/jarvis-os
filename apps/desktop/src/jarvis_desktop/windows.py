@@ -114,15 +114,26 @@ def run_vbs(
     return False, detail[-2_000:] or f"Windows speech exited with {result.returncode}"
 
 
-def show_toast(title: str, message: str) -> tuple[bool, str | None]:
+def show_toast(
+    title: str,
+    message: str,
+    *,
+    launch_uri: str | None = None,
+    snooze_uri: str | None = None,
+) -> tuple[bool, str | None]:
     script = r"""
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null
 [Windows.UI.Notifications.ToastNotification, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null
-$template = [Windows.UI.Notifications.ToastTemplateType]::ToastText02
-$xml = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent($template)
-$texts = $xml.GetElementsByTagName("text")
-$texts.Item(0).AppendChild($xml.CreateTextNode($env:JARVIS_TOAST_TITLE)) > $null
-$texts.Item(1).AppendChild($xml.CreateTextNode($env:JARVIS_TOAST_MESSAGE)) > $null
+$xml = [Windows.Data.Xml.Dom.XmlDocument]::new()
+$title = [System.Security.SecurityElement]::Escape($env:JARVIS_TOAST_TITLE)
+$message = [System.Security.SecurityElement]::Escape($env:JARVIS_TOAST_MESSAGE)
+$open = [System.Security.SecurityElement]::Escape($env:JARVIS_TOAST_LAUNCH)
+$snooze = [System.Security.SecurityElement]::Escape($env:JARVIS_TOAST_SNOOZE)
+$actions = ""
+if ($snooze) {
+  $actions = "<actions><action content='打开' arguments='$open' activationType='protocol'/><action content='稍后 10 分钟' arguments='$snooze' activationType='protocol'/></actions>"
+}
+$xml.LoadXml("<toast launch='$open' activationType='protocol'><visual><binding template='ToastGeneric'><text>$title</text><text>$message</text></binding></visual>$actions</toast>")
 $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Jarvis OS").Show($toast)
 """
@@ -131,6 +142,8 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
         environment={
             "JARVIS_TOAST_TITLE": title,
             "JARVIS_TOAST_MESSAGE": message,
+            "JARVIS_TOAST_LAUNCH": launch_uri or "",
+            "JARVIS_TOAST_SNOOZE": snooze_uri or "",
         },
     )
 
@@ -620,7 +633,25 @@ def deliver(
         if dry_run:
             success, error = True, None
         elif channel == "desktop":
-            success, error = show_toast(title, message)
+            notification_id = str(notification.get("id") or "")
+            action_id = str(notification.get("desktop_action_id") or "")
+            launch_uri = (
+                f"jarvis://notification/{notification_id}"
+                if re.fullmatch(r"[0-9a-fA-F-]{36}", notification_id)
+                else None
+            )
+            snooze_uri = (
+                f"jarvis://notification/{notification_id}/snooze/10?action={action_id}"
+                if launch_uri and re.fullmatch(r"[0-9a-fA-F-]{36}", action_id)
+                else None
+            )
+            sensitive = bool(notification.get("sensitive"))
+            success, error = show_toast(
+                "Jarvis 有一条新提醒" if sensitive else title,
+                "这是一条敏感提醒，请打开 Jarvis 查看。" if sensitive else message,
+                launch_uri=launch_uri,
+                snooze_uri=None if sensitive else snooze_uri,
+            )
         elif channel == "voice":
             success, error = speak(
                 spoken_text,

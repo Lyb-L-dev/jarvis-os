@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import { AppHeader } from "@/components/app-header";
+import { DesktopActivationBridge } from "@/components/desktop-activation-bridge";
 import { Sidebar } from "@/components/sidebar";
 
 const SIDEBAR_STORAGE_KEY = "jarvis:sidebar-hidden:v1";
@@ -81,6 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           showSidebarToggle={sidebarControlActive && !isTabletRoute}
           sidebarHidden={effectiveSidebarHidden}
         />
+        <DesktopActivationBridge />
         {children}
       </div>
     </SidebarControlContext.Provider>

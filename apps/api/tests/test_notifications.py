@@ -212,3 +212,31 @@ async def test_snooze_moves_reminder_back_to_pending_queue(
     assert response.status_code == 204
     assert await db_session.scalar(select(func.count(Notification.id))) == 0
     assert await db_session.scalar(select(func.count(ScheduledJob.id))) == 0
+
+
+async def test_desktop_snooze_action_is_idempotent(
+    db_session: AsyncSession,
+) -> None:
+    reminder = await notification_routes.create_reminder(
+        ReminderCreate(
+            title="桌面动作幂等",
+            message="重复点击只延后一次。",
+            scheduled_for=datetime.now(UTC),
+            channels=["desktop"],
+        ),
+        db_session,
+    )
+    action_id = "11111111-1111-1111-1111-111111111111"
+    first = await notification_routes.snooze_notification(
+        reminder.id,
+        NotificationSnoozeRequest(minutes=10, action_id=action_id),
+        db_session,
+    )
+    first_available_at = first.available_at
+    second = await notification_routes.snooze_notification(
+        reminder.id,
+        NotificationSnoozeRequest(minutes=10, action_id=action_id),
+        db_session,
+    )
+    assert second.snooze_count == 1
+    assert second.available_at == first_available_at

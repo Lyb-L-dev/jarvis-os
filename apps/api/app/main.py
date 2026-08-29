@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import Response
 
 from app.api.router import api_router
 from app.core.config import get_settings
@@ -17,6 +20,29 @@ from app.services.monitoring import monitoring_background_worker
 from app.services.proactive import proactive_background_worker
 
 settings = get_settings()
+
+
+class DesktopSessionMiddleware(BaseHTTPMiddleware):
+    """Require the launch-scoped desktop token when bundled mode enables it."""
+
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
+        configured = settings.desktop_session_token
+        if configured is None or request.method == "OPTIONS":
+            return await call_next(request)
+        if request.url.path in {f"{settings.api_prefix}/health/live", "/"}:
+            return await call_next(request)
+        expected = configured.get_secret_value()
+        provided = request.headers.get("X-Jarvis-Desktop-Session", "")
+        if not provided or not hmac.compare_digest(provided, expected):
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": "Desktop session is missing or expired."},
+            )
+        return await call_next(request)
 
 
 def selector_loop_factory() -> asyncio.AbstractEventLoop:
@@ -91,6 +117,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(DesktopSessionMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.web_origin_list,

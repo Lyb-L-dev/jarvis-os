@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "key_id": "jarvis-v4-development-2026",
+  "algorithm": "rsa-pkcs1-sha256",
+  "modulus_base64": "sXDSaRV/McYk/30q+fcEhHQyYu6rZHicAmAHzvu8vbemO/uTUOtr2+qgK64wydwfbc+Ahj95AMfLdRTZsdsLOUEUCg8YWKQSeQDGlqhIb3Oo6W4Tf8G0BogT6VgB2tRM11sFmdEJYXhDiUeFn8an0lt3ZpRfniItwmT6N0vL+V4yylBrT344cdWnm+ynEeXgV23gSBR2ulPi6Gz6yzyjxatcJjnwXD+/DMqHdd3g3S9a5DQcG1PiAvZmJvoSXBI2rDEvw+jv9Fg7cDDRDOYqNojyiOjpOWSrBGQ0XgH4m0FZMeam6L0LT60dhAb0GMl07k0+phoNtxmyr5K7zytz3FXidRKA/+XMFgMMS8+Hj/LI/hDxGCzdqmRs6PZxR3XzlkBrT30D5C7/LwwBo33Fzkw6DaZ/N16cBngScM8upTbnHcHlcetJ76qlXuxngnW2flSLtmypPbMDVXKIhOhv6Fv5RQAYSfbtoZxlR3FgcGtEw8KFpFCYDN+Itum+zDxp",
+  "exponent_base64": "AQAB",
+  "development_key": true
+}

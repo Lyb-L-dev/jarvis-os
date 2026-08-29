@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "quick-local-conversation",
+  "description": "The local quick window can call only reviewed desktop commands; business traffic goes through the authenticated FastAPI connection.",
+  "windows": ["quick"],
+  "permissions": [
+    "core:default"
+  ]
+}

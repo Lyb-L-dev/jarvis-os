@@ -94,12 +94,14 @@ flowchart LR
 | AI | Ollama、Qwen、DeepSeek、LangGraph、Mem0 | 模型路由、工作流、记忆实验与本地推理 |
 | Data | PostgreSQL 17、pgvector | 业务数据、向量检索、记忆网络与执行记录 |
 | Automation | Tool Gateway、n8n、Browser Worker | 风险分级、审批与隔离的工具执行 |
-| Companion | Python、Windows 通知、Piper/System TTS | 桌面提醒、语音与托盘常驻能力 |
+| Desktop | Tauri 2、Rust、WebView2、PyInstaller | Windows 壳、运行时监管、托盘、受控原生入口与更新回退 |
+| Companion | Python、Windows 通知、Piper/System TTS | 桌面提醒、语音与后台能力；安装态由 Tauri 统一托管 |
 
 ```text
 apps/
   api/              FastAPI、数据库、Agent 与模型服务
   web/              Next.js Web 应用
+  desktop-shell/    Tauri Windows 壳、Supervisor、安装器与更新门禁
   desktop/          Windows 后台提醒与语音组件
   browser-worker/   隔离的只读浏览器研究进程
 evals/              模型、Prompt、记忆与视觉评测集
@@ -136,6 +138,8 @@ Copy-Item .env.example .env
 - API 文档：<http://127.0.0.1:8000/docs>
 
 首次运行前请检查 `.env`。默认配置不要求填写云端 API Key；如需启用 DeepSeek 等付费模型，请自行填写密钥并保留逐次授权策略。**不要提交 `.env`，也不要把真实密钥粘贴到 Issue、日志或聊天记录中。**
+
+V4 Windows 安装包当前为 `4.0.0-beta.3` 验证候选。它使用 per-user NSIS 安装器，程序位于 `%LOCALAPPDATA%\Programs\Jarvis OS`，用户配置、日志、备份与更新证据位于 `%LOCALAPPDATA%\Jarvis OS`；卸载默认保留后者。公开 Stable 仍须通过代码签名、干净 Windows 11、24 小时待机与 7 天真实使用门禁，当前仓库不会把未满足门禁的构建标记为 Stable。
 
 更完整的安装、语音、平板、备份和故障恢复说明见[使用与恢复指南](docs/USER_GUIDE.md)。
 
@@ -192,9 +196,11 @@ Jarvis OS 将外部内容、模型输出和工具参数都视为不可信输入�
 | v2 Router、Prompt Registry、Tool Gateway | 已实现，按 Feature Flag 渐进启用 |
 | v3 对话工作台与 SSE | 基座已完成，持续收敛 |
 | v3 记忆网络 | 数据模型、多跳检索与评测集已落地 |
+| v4 Windows 桌面 App | beta.3 已实现，依赖审计与本机首装/升级/自动回退/卸载通过；Stable 门禁验证中 |
+| 自适应日程与学习教练（V5） | V5-1 掌握度模型与验收闭环后端已实现（Flag 默认关闭）；V5-2+ 规划中 |
 | 真实外部账号写入与高风险自动化 | 未开放 |
 
-近期变更见 [GitHub Commits](https://github.com/Lyb-L-dev/jarvis-os/commits/main/)，详细迁移计划见 [v2 架构迁移计划](docs/JARVIS_OS_V2_ARCHITECTURE_MIGRATION_PLAN.md) 与 [v3 计划](docs/JARVIS_OS_V3_PLAN.md)。
+近期变更见 [GitHub Commits](https://github.com/Lyb-L-dev/jarvis-os/commits/main/)，详细演进计划见 [v2 架构迁移计划](docs/JARVIS_OS_V2_ARCHITECTURE_MIGRATION_PLAN.md)、[v3 计划](docs/JARVIS_OS_V3_PLAN.md) 与 [v4 Windows 桌面版路线图](docs/JARVIS_OS_V4_PLAN.md)。
 
 ## 文档导航
 
@@ -202,8 +208,16 @@ Jarvis OS 将外部内容、模型输出和工具参数都视为不可信输入�
 - [技术设计](docs/TECHNICAL_DESIGN.md)
 - [数据库 ER 模型](docs/DATABASE_ER.md)
 - [产品需求文档](docs/Jarvis_OS_v1.1_PRD.md)
+- [V4 Windows 桌面版产品规格](docs/JARVIS_OS_V4_PRD.md)
+- [V4 Windows 桌面版路线图](docs/JARVIS_OS_V4_PLAN.md)
+- [V4 Windows 用户指南](docs/JARVIS_OS_V4_USER_GUIDE.md)
+- [V4 beta.3 Release Notes 与支持矩阵](docs/JARVIS_OS_V4_RELEASE_NOTES.md)
+- [V4 Windows 性能与体积报告](docs/JARVIS_OS_V4_PERFORMANCE_REPORT.md)
+- [V4 交付与发布门禁](docs/JARVIS_OS_V4_DELIVERY_LOG.md)
 - [使用与恢复指南](docs/USER_GUIDE.md)
 - [发布验收报告](docs/RELEASE_ACCEPTANCE.md)
+- [未来愿景与方向优先级](docs/JARVIS_OS_FUTURE_VISION_NOTES.md)
+- [V5 学习教练开发计划](docs/JARVIS_OS_V5_LEARNING_COACH_PLAN.md)
 - [无隐私演示与视频脚本](docs/DEMO_GUIDE.md)
 - [历史 Sprint 文档](docs/)
 

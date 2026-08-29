@@ -12,8 +12,51 @@ from jarvis_desktop.voice_persona import effective_voice_rate, prepare_voice_tex
 from jarvis_desktop.windows import (
     deliver,
     encoded_powershell,
+    show_toast,
     split_bilingual_segments,
 )
+
+
+def test_desktop_toast_uses_only_explicit_protocol_activation(monkeypatch) -> None:
+    captured: dict[str, str] = {}
+
+    def fake_run(_script: str, *, environment: dict[str, str], **_kwargs: object):
+        captured.update(environment)
+        return True, None
+
+    monkeypatch.setattr("jarvis_desktop.windows.run_powershell", fake_run)
+    assert show_toast(
+        "提醒",
+        "回到 Jarvis 查看",
+        launch_uri="jarvis://notification/11111111-1111-1111-1111-111111111111",
+    ) == (True, None)
+    assert captured["JARVIS_TOAST_LAUNCH"].startswith("jarvis://notification/")
+
+
+def test_desktop_toast_has_closed_snooze_action_and_redacts_sensitive_text(
+    monkeypatch,
+) -> None:
+    captured: dict[str, str] = {}
+
+    def fake_run(_script: str, *, environment: dict[str, str], **_kwargs: object):
+        captured.update(environment)
+        return True, None
+
+    monkeypatch.setattr("jarvis_desktop.windows.run_powershell", fake_run)
+    results = deliver(
+        {
+            "id": "11111111-1111-1111-1111-111111111111",
+            "desktop_action_id": "22222222-2222-2222-2222-222222222222",
+            "title": "敏感提醒",
+            "message": "私人正文不能显示",
+            "channels": ["desktop"],
+            "sensitive": True,
+        }
+    )
+    assert results[0]["success"] is True
+    assert captured["JARVIS_TOAST_TITLE"] == "Jarvis 有一条新提醒"
+    assert captured["JARVIS_TOAST_MESSAGE"] == "这是一条敏感提醒，请打开 Jarvis 查看。"
+    assert captured["JARVIS_TOAST_SNOOZE"] == ""
 
 
 def test_powershell_encoding_round_trips_unicode() -> None:

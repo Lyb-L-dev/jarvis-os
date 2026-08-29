@@ -1,0 +1,22 @@
+{
+    "schema_version":  2,
+    "app_version":  "4.0.0-beta.3",
+    "git_sha":  "1949ebae84c88c39fc2bc6eb69354494a5bfc8e5",
+    "web_build_id":  "b0982aa1187b2ae7ce68",
+    "core_version":  "0.1.0",
+    "companion_version":  "0.1.0",
+    "schema_revision":  "20260813_0037_desktop_notification_actions",
+    "target":  "x86_64-pc-windows-msvc",
+    "build_time_utc":  "2026-08-15T06:40:44.5101408+00:00",
+    "channel":  "beta",
+    "working_tree_dirty":  true,
+    "update_manifest_signature":  "rsa-pkcs1-sha256",
+    "windows_code_signing":  "required-for-publication",
+    "artifacts":  {
+                      "static_ui_sha256":  "b0982aa1187b2ae7ce68e8d78a694b722856ab9acb42a9c6ed010fdb23de333c",
+                      "sidecar_sha256":  "86128b3c5d6b6330d1cf9900f851dfa517764573448f117f6aa020e0e267a2e8",
+                      "runtime_scripts_sha256":  "3780242d13cd122421fdfbb6c2214118e180e1ee1ee07e6374fb7615ea4cde74",
+                      "installer_hooks_sha256":  "5895642dd049371eefa619096696a90a8c99a705597128c9ffba794d736cf960",
+                      "sbom_sha256":  "eda9bf797f0389a5b714c7fda015d2d0f3cc7c61d46921f502b6d3442252f1cf"
+                  }
+}

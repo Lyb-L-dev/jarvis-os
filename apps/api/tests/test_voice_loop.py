@@ -145,6 +145,23 @@ async def test_voice_status_reads_default_off_flag(
     assert result.reason == "feature_disabled"
 
 
+async def test_voice_readiness_does_not_require_user_data(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.api.routes import voice as voice_routes
+
+    loop = VoiceLoop(settings(), FakeSpeechAdapter(stt_ready=True, tts_ready=False))
+    monkeypatch.setattr(voice_routes, "get_voice_loop", lambda _: loop)
+
+    result = await voice_routes.voice_readiness(settings())
+
+    assert result.enabled is True
+    assert result.local_only is True
+    assert result.stt_ready is True
+    assert result.tts_ready is False
+    assert result.reason == "local_models_missing"
+
+
 async def test_quiet_hours_block_synthesis_before_model_load(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

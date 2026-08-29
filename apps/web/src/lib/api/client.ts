@@ -14,13 +14,57 @@ export interface RequestOptions {
   errorMessage?: (status: number) => string;
 }
 
+type DesktopRuntimeConnection = {
+  apiBaseUrl: string;
+  sessionToken?: string | null;
+  runtimeMode: "source" | "bundled" | string;
+  appVersion: string;
+};
+
+declare global {
+  interface Window {
+    __JARVIS_RUNTIME__?: DesktopRuntimeConnection;
+  }
+}
+
+export function getRuntimeConnection(): DesktopRuntimeConnection | null {
+  return typeof window === "undefined" ? null : (window.__JARVIS_RUNTIME__ ?? null);
+}
+
+export function getApiBaseUrl(): string {
+  return getRuntimeConnection()?.apiBaseUrl ?? API_BASE_URL;
+}
+
+export function runtimeRequestHeaders(): HeadersInit {
+  const token = getRuntimeConnection()?.sessionToken;
+  return token ? { "X-Jarvis-Desktop-Session": token } : {};
+}
+
+export function apiUrl(path: string): string {
+  return `${getApiBaseUrl()}${path}`;
+}
+
+export function runtimeUrl(url: string | URL): string | URL {
+  const connection = getRuntimeConnection();
+  if (!connection) return url;
+  const value = url.toString();
+  if (!value.startsWith(API_BASE_URL)) return url;
+  return `${connection.apiBaseUrl}${value.slice(API_BASE_URL.length)}`;
+}
+
 export async function request<T>(
   url: string | URL,
   options: RequestOptions,
 ): Promise<T> {
-  const init: RequestInit = { method: options.method ?? "GET" };
+  const init: RequestInit = {
+    method: options.method ?? "GET",
+    headers: runtimeRequestHeaders(),
+  };
   if (options.body !== undefined) {
-    init.headers = { "Content-Type": "application/json" };
+    init.headers = {
+      ...runtimeRequestHeaders(),
+      "Content-Type": "application/json",
+    };
     init.body = JSON.stringify(options.body);
   }
   if (options.cache !== undefined) {
@@ -29,7 +73,7 @@ export async function request<T>(
   if (options.signal !== undefined) {
     init.signal = options.signal;
   }
-  const response = await fetch(url, init);
+  const response = await fetch(runtimeUrl(url), init);
   if (!response.ok) {
     if (options.errorMessage) {
       throw new Error(options.errorMessage(response.status));
@@ -43,9 +87,15 @@ export async function requestVoid(
   url: string | URL,
   options: RequestOptions,
 ): Promise<void> {
-  const init: RequestInit = { method: options.method ?? "GET" };
+  const init: RequestInit = {
+    method: options.method ?? "GET",
+    headers: runtimeRequestHeaders(),
+  };
   if (options.body !== undefined) {
-    init.headers = { "Content-Type": "application/json" };
+    init.headers = {
+      ...runtimeRequestHeaders(),
+      "Content-Type": "application/json",
+    };
     init.body = JSON.stringify(options.body);
   }
   if (options.cache !== undefined) {
@@ -54,7 +104,7 @@ export async function requestVoid(
   if (options.signal !== undefined) {
     init.signal = options.signal;
   }
-  const response = await fetch(url, init);
+  const response = await fetch(runtimeUrl(url), init);
   if (!response.ok) {
     if (options.errorMessage) {
       throw new Error(options.errorMessage(response.status));

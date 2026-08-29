@@ -81,6 +81,18 @@ function Test-EnvFlag {
 }
 
 $pageConvergenceEnabled = Test-EnvFlag -Name "V3_PAGE_CONVERGENCE_ENABLED"
+$desktopShellEnabled = $env:JARVIS_DESKTOP_SHELL -eq "1"
+$desktopStaticUiEnabled =
+    $desktopShellEnabled -and $env:JARVIS_DESKTOP_STATIC_UI -eq "1"
+if ($desktopStaticUiEnabled) {
+    $env:WEB_ORIGINS = @(
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://tauri.localhost",
+        "https://tauri.localhost",
+        "tauri://localhost"
+    ) -join ","
+}
 if ($pageConvergenceEnabled) {
     $env:V3_PAGE_CONVERGENCE_ENABLED = "true"
     $InterfaceUrl = "http://127.0.0.1:3000/chat"
@@ -195,7 +207,31 @@ finally {
     Pop-Location
 }
 
-if (-not (Get-ListeningProcessId -Port 8000)) {
+$apiProcessId = Get-ListeningProcessId -Port 8000
+$previousDesktopStaticUi = $false
+if ($existingRuntime) {
+    $desktopStaticUiProperty = $existingRuntime.PSObject.Properties["desktop_static_ui"]
+    if ($desktopStaticUiProperty) {
+        $previousDesktopStaticUi = [bool]$desktopStaticUiProperty.Value
+    }
+}
+if (
+    $apiProcessId -and
+    $desktopStaticUiEnabled -and
+    -not $previousDesktopStaticUi -and
+    $existingRuntime -and
+    $existingRuntime.api_pid -and
+    [int]$existingRuntime.api_pid -eq $apiProcessId
+) {
+    $trackedApiProcess = Get-Process -Id $apiProcessId -ErrorAction SilentlyContinue
+    if ($trackedApiProcess -and $trackedApiProcess.ProcessName -eq "python") {
+        Write-Host "Restarting Jarvis Core for the bundled desktop origin..."
+        Stop-Process -Id $apiProcessId -Force
+        Start-Sleep -Seconds 1
+        $apiProcessId = $null
+    }
+}
+if (-not $apiProcessId) {
     Write-Host "Starting Jarvis Core..."
     Start-Process -WindowStyle Hidden -FilePath $PythonPath `
         -ArgumentList @(
@@ -216,11 +252,30 @@ if ($existingRuntime -and $existingRuntime.companion_pid) {
         $companionProcess = $candidate
     }
 }
+$previousDesktopShell = $false
+if ($existingRuntime) {
+    $desktopShellProperty = $existingRuntime.PSObject.Properties["desktop_shell"]
+    if ($desktopShellProperty) {
+        $previousDesktopShell = [bool]$desktopShellProperty.Value
+    }
+}
+if (
+    $companionProcess -and
+    $previousDesktopShell -ne $desktopShellEnabled
+) {
+    Write-Host "Restarting Jarvis Companion to converge tray ownership..."
+    Stop-Process -Id $companionProcess.Id -Force
+    $companionProcess = $null
+}
 if (-not $companionProcess) {
     Write-Host "Starting Jarvis Windows Companion..."
+    $companionArguments = @("-m", "jarvis_desktop")
+    if ($env:JARVIS_DESKTOP_SHELL -eq "1") {
+        $companionArguments += "--no-tray"
+    }
     $companionProcess = Start-Process -WindowStyle Hidden -PassThru `
         -FilePath $PythonPath `
-        -ArgumentList @("-m", "jarvis_desktop") `
+        -ArgumentList $companionArguments `
         -WorkingDirectory $DesktopDirectory `
         -RedirectStandardOutput $CompanionOutputLog `
         -RedirectStandardError $CompanionErrorLog
@@ -262,6 +317,23 @@ if (-not $backupProcess) {
     }
 }
 
+if ($desktopStaticUiEnabled) {
+    $trackedWebProcessId = Get-ListeningProcessId -Port 3000
+    if (
+        $trackedWebProcessId -and
+        $existingRuntime -and
+        $existingRuntime.web_pid -and
+        [int]$existingRuntime.web_pid -eq $trackedWebProcessId
+    ) {
+        $trackedWebProcess = Get-Process -Id $trackedWebProcessId -ErrorAction SilentlyContinue
+        if ($trackedWebProcess -and $trackedWebProcess.ProcessName -eq "node") {
+            Write-Host "Stopping the tracked web server; the desktop shell uses bundled UI assets..."
+            Stop-Process -Id $trackedWebProcessId -Force
+            Start-Sleep -Seconds 1
+        }
+    }
+}
+else {
 $buildId = Join-Path $WebDirectory ".next\BUILD_ID"
 $needsWebBuild = $Rebuild -or -not (Test-Path -LiteralPath $buildId)
 if (-not $needsWebBuild) {
@@ -338,14 +410,17 @@ if (-not (Get-ListeningProcessId -Port 3000)) {
         -WorkingDirectory $WebDirectory
 }
 Wait-ForUrl -Url $InterfaceUrl -Name "Jarvis interface"
+}
 
 $runtime = @{
     api_pid = Get-ListeningProcessId -Port 8000
-    web_pid = Get-ListeningProcessId -Port 3000
+    web_pid = if ($desktopStaticUiEnabled) { $null } else { Get-ListeningProcessId -Port 3000 }
     companion_pid = $companionProcess.Id
     backup_pid = $backupProcess.Id
     browser_worker_pid = if ($browserWorkerProcess) { $browserWorkerProcess.Id } else { $null }
     page_convergence_enabled = $pageConvergenceEnabled
+    desktop_shell = $desktopShellEnabled
+    desktop_static_ui = $desktopStaticUiEnabled
     started_at = (Get-Date).ToString("o")
 }
 [System.IO.File]::WriteAllText(

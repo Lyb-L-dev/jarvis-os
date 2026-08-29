@@ -242,7 +242,9 @@ export function TwinChatWorkspace({
     const prompt = input.trim();
     if (!prompt) return;
     revealPanelsForPrompt(prompt, "composer");
-    void stream.submitMessage();
+    void voice.submitConfirmedVoice(input).then((handled) => {
+      if (!handled) void stream.submitMessage();
+    });
   }
 
   function submitPanelPrompt(prompt: string) {
@@ -412,10 +414,12 @@ export function TwinChatWorkspace({
             voiceState={voice.state}
             voiceAvailable={voice.available}
             voiceReason={voice.status?.reason ?? null}
-            onToggleVoice={() => {
+            onStartVoice={() => {
               if (stream.sending) void stream.stopGeneration();
-              voice.toggle();
+              void voice.startListening();
             }}
+            onStopVoice={voice.stopListening}
+            onCancelVoice={voice.cancel}
             input={input}
             setInput={setInput}
             sending={stream.sending}

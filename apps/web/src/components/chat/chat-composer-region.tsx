@@ -26,7 +26,9 @@ type ComposerProps = {
   voiceState: VoiceLoopState;
   voiceAvailable: boolean;
   voiceReason: string | null;
-  onToggleVoice: () => void;
+  onStartVoice: () => void;
+  onStopVoice: () => void;
+  onCancelVoice: () => void;
   input: string;
   setInput: (value: string) => void;
   sending: boolean;
@@ -53,7 +55,9 @@ export function ChatComposerRegion({
   voiceState,
   voiceAvailable,
   voiceReason,
-  onToggleVoice,
+  onStartVoice,
+  onStopVoice,
+  onCancelVoice,
   input,
   setInput,
   sending,
@@ -103,7 +107,25 @@ export function ChatComposerRegion({
             aria-label={voiceActionLabel(voiceState, voiceAvailable)}
             className={voiceState === "listening" ? "is-listening" : ""}
             disabled={!voiceAvailable && !sending}
-            onClick={onToggleVoice}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              event.currentTarget.setPointerCapture(event.pointerId);
+              onStartVoice();
+            }}
+            onPointerUp={onStopVoice}
+            onPointerCancel={onCancelVoice}
+            onKeyDown={(event) => {
+              if ((event.key === " " || event.key === "Enter") && !event.repeat) {
+                event.preventDefault();
+                onStartVoice();
+              }
+            }}
+            onKeyUp={(event) => {
+              if (event.key === " " || event.key === "Enter") {
+                event.preventDefault();
+                onStopVoice();
+              }
+            }}
             title={voiceTitle(voiceAvailable, voiceReason)}
             type="button"
           >
@@ -168,6 +190,22 @@ export function ChatComposerRegion({
           <span aria-live="polite">
             {voiceStatusText(voiceState, sending, voiceAvailable)}
           </span>
+          {!voiceAvailable ? (
+            <span className="voice-recovery-actions">
+              <button
+                onClick={() => {
+                  const core = (window as typeof window & {
+                    __TAURI__?: { core?: { invoke: (command: string) => Promise<unknown> } };
+                  }).__TAURI__?.core;
+                  void core?.invoke("desktop_open_microphone_settings");
+                }}
+                type="button"
+              >
+                Windows 麦克风权限
+              </button>
+              <Link href="/notifications">检查本地语音模型</Link>
+            </span>
+          ) : null}
         </div>
       </div>
     </div>

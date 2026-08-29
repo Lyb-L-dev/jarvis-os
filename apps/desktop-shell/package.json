@@ -1,0 +1,22 @@
+{
+  "name": "jarvis-os-desktop-shell",
+  "version": "4.0.0-beta.3",
+  "private": true,
+  "description": "Jarvis OS V4 Windows desktop shell",
+  "scripts": {
+    "prepare:ui": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-ui.ps1",
+    "prepare:bundle": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-bundle.ps1",
+    "build:sidecar": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-sidecar.ps1",
+    "release:manifest": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-release-manifest.ps1",
+    "release:sbom": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-sbom.ps1",
+    "release:audit": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/security-audit.ps1",
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/native.ps1 dev",
+    "build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/native.ps1 bundle",
+    "build:rust": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/native.ps1 build",
+    "check": "node --test scripts/*.test.mjs",
+    "check:rust": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/native.ps1 test"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.4"
+  }
+}

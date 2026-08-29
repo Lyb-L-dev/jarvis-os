@@ -2,7 +2,14 @@
  * Chat API client: conversations, streaming, model calls, evaluation.
  */
 
-import { API_BASE_URL, request, requestVoid, responseError } from "./client";
+import {
+  API_BASE_URL,
+  apiUrl,
+  request,
+  requestVoid,
+  responseError,
+  runtimeRequestHeaders,
+} from "./client";
 import type { ContextAssemblyInfo } from "./context";
 
 export type ModelMode = "standard" | "deep" | "local" | "auto";
@@ -340,7 +347,10 @@ async function consumeChatStream(
 ): Promise<void> {
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      ...runtimeRequestHeaders(),
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(payload),
     signal,
   });
@@ -430,7 +440,7 @@ export async function streamChatMessage(
   signal?: AbortSignal,
 ): Promise<void> {
   return consumeChatStream(
-    `${API_BASE_URL}/chat/conversations/${conversationId}/stream`,
+    apiUrl(`/chat/conversations/${conversationId}/stream`),
     payload,
     handlers,
     signal,
@@ -451,7 +461,9 @@ export async function streamRegenerateMessage(
   signal?: AbortSignal,
 ): Promise<void> {
   return consumeChatStream(
-    `${API_BASE_URL}/chat/conversations/${conversationId}/messages/${assistantMessageId}/regenerate/stream`,
+    apiUrl(
+      `/chat/conversations/${conversationId}/messages/${assistantMessageId}/regenerate/stream`,
+    ),
     payload,
     handlers,
     signal,

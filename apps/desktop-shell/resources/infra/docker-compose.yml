@@ -1,0 +1,24 @@
+name: jarvis-os
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: jarvis-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jarvis
+      POSTGRES_USER: jarvis
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Jarvis protected database password is required}"
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - jarvis_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarvis -d jarvis"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  jarvis_postgres_data:

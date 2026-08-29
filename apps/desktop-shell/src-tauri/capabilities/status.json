@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "status-runtime-diagnostics",
+  "description": "The local status center can inspect Jarvis runtime evidence and invoke only reviewed recovery actions.",
+  "windows": ["status"],
+  "permissions": [
+    "core:default",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
+  ]
+}

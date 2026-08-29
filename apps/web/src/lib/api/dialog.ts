@@ -3,7 +3,13 @@
  * Delivered contract: docs/JARVIS_OS_V3_DELIVERY_LOG.md (V3-0).
  */
 
-import { API_BASE_URL, request } from "./client";
+import {
+  API_BASE_URL,
+  apiUrl,
+  getRuntimeConnection,
+  request,
+  runtimeRequestHeaders,
+} from "./client";
 
 export type DialogUserBrief = {
   name: string;
@@ -138,7 +144,12 @@ export async function getDialogWorkspace(
 export function subscribeUiEvents(
   onEvent: (event: UiEvent) => void,
 ): () => void {
-  const source = new EventSource(`${API_BASE_URL}/ui/events`);
+  if (getRuntimeConnection()?.sessionToken) {
+    const controller = new AbortController();
+    void subscribeDesktopUiEvents(onEvent, controller.signal);
+    return () => controller.abort();
+  }
+  const source = new EventSource(apiUrl("/ui/events"));
   for (const eventType of ["snapshot", "dialog", "heartbeat"]) {
     source.addEventListener(eventType, (raw) => {
       const message = raw as MessageEvent;
@@ -152,4 +163,83 @@ export function subscribeUiEvents(
     });
   }
   return () => source.close();
+}
+
+async function subscribeDesktopUiEvents(
+  onEvent: (event: UiEvent) => void,
+  signal: AbortSignal,
+): Promise<void> {
+  let lastEventId = "";
+  let retryDelayMs = 750;
+  while (!signal.aborted) {
+    try {
+      const response = await fetch(apiUrl("/ui/events"), {
+        cache: "no-store",
+        headers: {
+          ...runtimeRequestHeaders(),
+          Accept: "text/event-stream",
+          ...(lastEventId ? { "Last-Event-ID": lastEventId } : {}),
+        },
+        signal,
+      });
+      if (!response.ok || !response.body) {
+        throw new Error(`Desktop event stream failed with ${response.status}`);
+      }
+      retryDelayMs = 750;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (!signal.aborted) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value, { stream: !done }).replaceAll("\r\n", "\n");
+        let boundary = buffer.indexOf("\n\n");
+        while (boundary >= 0) {
+          const event = parseUiEventBlock(buffer.slice(0, boundary));
+          buffer = buffer.slice(boundary + 2);
+          if (event) {
+            lastEventId = event.id || lastEventId;
+            onEvent(event);
+          }
+          boundary = buffer.indexOf("\n\n");
+        }
+        if (done) break;
+      }
+    } catch (error) {
+      if (signal.aborted) return;
+      console.warn("Jarvis desktop event stream reconnecting", error);
+    }
+    await new Promise<void>((resolve) => {
+      const timeout = window.setTimeout(resolve, retryDelayMs);
+      signal.addEventListener(
+        "abort",
+        () => {
+          window.clearTimeout(timeout);
+          resolve();
+        },
+        { once: true },
+      );
+    });
+    retryDelayMs = Math.min(retryDelayMs * 2, 5000);
+  }
+}
+
+function parseUiEventBlock(block: string): UiEvent | null {
+  let id = "";
+  let type = "message";
+  const dataLines: string[] = [];
+  for (const line of block.split("\n")) {
+    if (line.startsWith("id:")) id = line.slice(3).trim();
+    else if (line.startsWith("event:")) type = line.slice(6).trim();
+    else if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
+  }
+  if (!dataLines.length || !["snapshot", "dialog", "heartbeat"].includes(type)) {
+    return null;
+  }
+  let data: unknown = null;
+  try {
+    data = JSON.parse(dataLines.join("\n"));
+  } catch {
+    // Malformed events preserve the same null-payload behavior as EventSource.
+  }
+  return { id, type, data };
 }

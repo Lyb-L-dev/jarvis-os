@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "asset": ".impeccable/mocks/v4-status-ledger.png",
+  "surface": "apps/desktop-shell/src-ui/status/index.html",
+  "approved": true,
+  "approvedAt": "2026-08-13T03:20:29.9609459+08:00",
+  "title": "V4 Status Center — Runtime Evidence Ledger",
+  "description": "Approved composition reference: overall verdict first, wide evidence ledger at left, narrow whitelist action rail at right, and version/operation feedback in the footer.",
+  "prompt": null,
+  "provenance": "Approved comp supplied in the project; original generation prompt was not available and has not been reconstructed."
+}

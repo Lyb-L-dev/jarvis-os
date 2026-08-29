@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jarvis OS · 运行状态中心</title>
+    <link rel="stylesheet" href="status.css?v=4.0.0-beta.3" />
+    <script src="status.js?v=4.0.0-beta.3" defer></script>
+  </head>
+  <body>
+    <!--
+      THESIS: 运行状态是可核对的证据台账，拒绝以装饰性指标卡代替故障判断。
+      OWN-WORLD: 近黑分层表面、细边界与紧凑行；青色只标识焦点与主操作，状态色保持字面含义。
+      STORY: 先确认整体结论，再逐项核对必需/可选组件，最后只执行与当前事实相关的白名单恢复动作。
+      FIRST VIEWPORT: 顶部整体结论，左侧宽幅证据台账，右侧窄幅判断与操作；重新检查是唯一主操作。
+      FORM: 运行证据台账，结构候选 6，seed f25839f8，构图 apps/.impeccable/mocks/v4-status-ledger.png。
+      FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+    -->
+    <main class="status-shell">
+      <header class="app-bar">
+        <div class="brand-lockup" aria-label="Jarvis OS V4">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img">
+              <path d="M12 3 4.2 7.5v9L12 21l7.8-4.5v-9L12 3Z" />
+              <path d="M12 7.3 8 9.6v4.8l4 2.3 4-2.3V9.6l-4-2.3Z" />
+            </svg>
+          </span>
+          <span>Jarvis OS V4</span>
+        </div>
+        <span class="bar-divider" aria-hidden="true"></span>
+        <span class="window-name">运行状态中心</span>
+        <span class="runtime-mode" id="runtime-mode">正在读取运行模式</span>
+      </header>
+
+      <section class="overall" aria-labelledby="page-title">
+        <div class="overall-copy">
+          <span class="state-dot" id="overall-dot" aria-hidden="true"></span>
+          <div>
+            <h1 id="page-title">正在检查 Jarvis</h1>
+            <p id="overall-message">正在从 Runtime Supervisor 读取真实状态。</p>
+          </div>
+        </div>
+        <div class="checked-time">
+          <span>最后检查</span>
+          <time id="last-checked">—</time>
+        </div>
+      </section>
+
+      <div class="workspace">
+        <section class="evidence-panel" aria-labelledby="evidence-title">
+          <div class="panel-heading">
+            <div>
+              <h2 id="evidence-title">运行证据</h2>
+              <p>必需组件决定工作台是否可用；可选能力失败只会降级。</p>
+            </div>
+            <span class="legend"><i></i> 数据来自 Supervisor</span>
+          </div>
+
+          <div class="evidence-table" role="table" aria-label="Jarvis 运行组件">
+            <div class="table-header" role="row">
+              <span role="columnheader">组件</span>
+              <span role="columnheader">状态</span>
+              <span role="columnheader">归属</span>
+              <span role="columnheader">版本</span>
+              <span role="columnheader">最后检查</span>
+              <span role="columnheader">直接原因 / 恢复建议</span>
+            </div>
+            <div id="required-components" class="component-group" role="rowgroup" aria-label="必需运行">
+              <div class="group-label" role="row"><span role="cell">必需运行</span></div>
+              <div class="loading-row" aria-hidden="true"></div>
+              <div class="loading-row" aria-hidden="true"></div>
+              <div class="loading-row" aria-hidden="true"></div>
+            </div>
+            <div id="optional-components" class="component-group" role="rowgroup" aria-label="可选能力">
+              <div class="group-label" role="row"><span role="cell">可选能力</span></div>
+              <div class="loading-row" aria-hidden="true"></div>
+              <div class="loading-row" aria-hidden="true"></div>
+            </div>
+          </div>
+          <div id="empty-state" class="empty-state" hidden>
+            <strong>尚无组件证据</strong>
+            <span>运行适配器未返回可检查项，请重新检查。</span>
+          </div>
+        </section>
+
+        <aside class="action-panel" aria-labelledby="action-title">
+          <div class="selected-evidence" id="selected-evidence">
+            <span class="selected-state" id="selected-state">等待证据</span>
+            <h2 id="selected-name">选择一个运行组件</h2>
+            <p id="selected-detail">点击左侧行可在这里查看完整原因和恢复建议。</p>
+            <p class="recovery" id="selected-recovery" hidden></p>
+          </div>
+
+          <div class="action-heading">
+            <h2 id="action-title">可用操作</h2>
+            <p>只提供与当前运行状态相关的安全操作。</p>
+          </div>
+          <div class="actions">
+            <button class="button primary" id="refresh-button" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" /></svg>
+              <span>重新检查</span>
+              <kbd>F5</kbd>
+            </button>
+            <button class="button" id="restart-button" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v7m6.4-3.4a9 9 0 1 1-12.8 0" /></svg>
+              <span>重启 Jarvis Core</span>
+            </button>
+            <button class="button" id="logs-button" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5" /></svg>
+              <span>打开日志目录</span>
+            </button>
+            <button class="button" id="export-button" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 19h14" /></svg>
+              <span>导出脱敏诊断</span>
+            </button>
+          </div>
+
+          <div class="privacy-note">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.8 8 7 10 4.2-2 7-5.4 7-10V6l-7-3Zm-3 9 2 2 4-5" /></svg>
+            <div>
+              <strong>隐私与数据边界</strong>
+              <p>诊断文件仅收录结构化状态和日志元数据，不包含 Token、Cookie、Prompt、日志正文或私人文件内容。</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <footer class="status-footer">
+        <span id="release-version">Jarvis OS 4.0.0-beta.3</span>
+        <span id="schema-version">数据库版本待读取</span>
+        <span id="operation-feedback" role="status" aria-live="polite">状态中心已就绪</span>
+      </footer>
+    </main>
+  </body>
+</html>

@@ -43,7 +43,7 @@ jobs:
 
       - name: Security check
         working-directory: apps/api
-        run: pip-audit -r pyproject.toml
+        run: pip-audit --vulnerability-service osv
 
   frontend:
     name: Frontend (typecheck + lint)
@@ -69,6 +69,52 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Production dependency audit
+        run: npm audit --audit-level=high --registry=https://registry.npmjs.org
+
+  desktop-windows:
+    name: Desktop (Windows contracts + Rust)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/desktop-shell
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/desktop-shell/package-lock.json
+
+      - name: Install desktop toolchain
+        run: npm ci
+
+      - name: Desktop contract tests
+        run: npm run check
+
+      - name: Desktop dependency audit
+        run: npm audit --audit-level=high --registry=https://registry.npmjs.org
+
+      - name: Create signed update fixture
+        shell: pwsh
+        run: |
+          ./scripts/new-update-signing-key.ps1 -OutputDirectory "${{ runner.temp }}/jarvis-update-key"
+          ./scripts/generate-update-envelope.ps1 `
+            -InstallerPath "$env:SystemRoot/System32/notepad.exe" `
+            -Channel beta `
+            -PackageUrl "https://github.com/Lyb-L-dev/jarvis-os/releases/download/ci/notepad.exe" `
+            -SigningKeyPath "${{ runner.temp }}/jarvis-update-key/private-key.dpapi.json" `
+            -OutputPath "${{ runner.temp }}/jarvis-update-envelope.json"
+
+      - name: Rust tests with signed fixture
+        shell: pwsh
+        env:
+          JARVIS_UPDATE_PUBLIC_KEY_FILE: ${{ runner.temp }}/jarvis-update-key/public-key.json
+          JARVIS_UPDATE_TEST_ENVELOPE: ${{ runner.temp }}/jarvis-update-envelope.json
+        run: ./scripts/native.ps1 test
 
   deploy-rules:
     name: Docker rules (compose + ingress syntax)

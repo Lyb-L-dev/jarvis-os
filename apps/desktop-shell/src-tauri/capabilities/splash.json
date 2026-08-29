@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "splash-runtime-control",
+  "description": "The local launch window can observe and control the Jarvis-owned source runtime during V4-0.",
+  "windows": ["splash"],
+  "permissions": [
+    "core:default",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
+  ]
+}

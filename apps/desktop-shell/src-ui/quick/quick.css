@@ -1,0 +1,129 @@
+:root {
+  color-scheme: dark;
+  font-family: "Segoe UI Variable Text", "Microsoft YaHei UI", sans-serif;
+  background: #090c0e;
+  color: #edf4f1;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 15% -10%, rgb(42 132 103 / 18%), transparent 42%),
+    linear-gradient(145deg, #0b1012, #080a0c 68%);
+}
+
+button, textarea { font: inherit; }
+
+.quick-shell {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  padding: 26px 28px 18px;
+}
+
+.quick-header,
+.composer-footer,
+.answer-heading,
+.file-actions,
+footer {
+  display: flex;
+  align-items: center;
+}
+
+.quick-header { justify-content: space-between; }
+.eyebrow { margin: 0 0 5px; color: #71c8a9; font-size: 10px; font-weight: 700; letter-spacing: .14em; }
+h1 { margin: 0; font-size: 23px; font-weight: 620; letter-spacing: -.025em; }
+
+.icon-button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 3%);
+  color: #929f9a;
+  cursor: pointer;
+  font-size: 21px;
+}
+
+.answer-panel,
+.file-preview {
+  margin-top: 18px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 3.5%);
+}
+
+.answer-panel { max-height: 236px; overflow: auto; padding: 15px 17px; }
+.answer-heading { gap: 7px; }
+.answer-heading strong { font-size: 12px; }
+.answer-heading > span:last-child { color: #78857f; font-size: 10px; }
+.answer-dot { width: 7px; height: 7px; border-radius: 50%; background: #61d4ad; }
+#answer-text { margin: 11px 0 0; color: #c8d5d0; font-size: 12px; line-height: 1.65; white-space: pre-wrap; }
+.text-button { margin-top: 11px; border: 0; background: transparent; padding: 0; color: #72d9b6; cursor: pointer; font-size: 11px; }
+
+.file-preview { padding: 14px 16px; }
+.file-preview > div:first-child { display: grid; gap: 3px; }
+.file-kind { color: #d2a968; font-size: 10px; font-weight: 650; }
+.file-preview strong { font-size: 12px; }
+.file-preview small, .file-preview p { color: #87948f; font-size: 10px; }
+.file-preview p { margin: 9px 0 0; line-height: 1.5; }
+.file-actions { justify-content: flex-end; gap: 7px; margin-top: 10px; }
+.file-actions button { border: 1px solid rgb(255 255 255 / 9%); border-radius: 8px; background: rgb(255 255 255 / 4%); padding: 7px 10px; color: #becbc6; cursor: pointer; font-size: 10px; }
+#file-confirm { border-color: rgb(97 212 173 / 35%); color: #9ce8cf; }
+
+#quick-form {
+  margin-top: auto;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 3%);
+  box-shadow: 0 18px 55px rgb(0 0 0 / 24%);
+}
+
+#quick-input {
+  display: block;
+  width: 100%;
+  min-height: 108px;
+  max-height: 190px;
+  resize: vertical;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 16px 17px 8px;
+  color: #edf4f1;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+#quick-input::placeholder { color: #626d69; }
+.composer-footer { justify-content: space-between; padding: 8px 10px 10px; }
+.entry-actions { display: flex; gap: 6px; }
+.entry-button, .send-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-size: 10px;
+}
+.entry-button { border: 1px solid rgb(255 255 255 / 8%); background: rgb(255 255 255 / 3%); color: #aebbb6; }
+.entry-button.is-listening { border-color: #d77373; background: rgb(215 115 115 / 12%); color: #f2b0b0; }
+.send-button { border: 1px solid #61d4ad; background: #61d4ad; color: #07100d; font-weight: 680; }
+.send-button:disabled, .entry-button:disabled { cursor: wait; opacity: .5; }
+#file-input { position: absolute; width: 1px; height: 1px; clip: rect(0 0 0 0); clip-path: inset(50%); }
+
+footer { justify-content: space-between; margin-top: 12px; color: #697570; font-size: 10px; }
+
+button:focus-visible, textarea:focus-visible, .entry-button:has(+ #file-input:focus-visible) {
+  outline: 2px solid #72e5be;
+  outline-offset: 2px;
+}
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); }
+
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition-duration: .01ms !important; } }

@@ -111,6 +111,22 @@ export function NotificationCenter() {
     };
   }, [refresh]);
 
+  useEffect(() => {
+    const focusId = new URLSearchParams(window.location.search).get("focus");
+    if (!focusId || loading) return;
+    const target = document.querySelector<HTMLElement>(`[data-notification-id="${CSS.escape(focusId)}"]`);
+    if (target) {
+      target.scrollIntoView({ block: "center", behavior: "smooth" });
+      target.focus({ preventScroll: true });
+    } else {
+      const timer = window.setTimeout(
+        () => setNotice("该提醒已过期、被删除，或不属于当前用户。"),
+        0,
+      );
+      return () => window.clearTimeout(timer);
+    }
+  }, [loading, notifications]);
+
   const upcoming = useMemo(
     () =>
       notifications
@@ -381,7 +397,7 @@ export function NotificationCenter() {
                 <div className="reminder-list">
                   {upcoming.length ? (
                     upcoming.map((item) => (
-                      <article className="reminder-item" key={item.id}>
+                      <article className="reminder-item" data-notification-id={item.id} key={item.id} tabIndex={-1}>
                         <div className="reminder-time">
                           {formatTime(item.available_at)}
                         </div>
@@ -452,7 +468,7 @@ export function NotificationCenter() {
                 <div className="reminder-list reminder-history">
                   {history.length ? (
                     history.slice(0, 30).map((item) => (
-                      <article className="reminder-item" key={item.id}>
+                      <article className="reminder-item" data-notification-id={item.id} key={item.id} tabIndex={-1}>
                         <div className="reminder-time">
                           {formatTime(item.delivered_at ?? item.available_at)}
                         </div>

@@ -2,7 +2,14 @@
  * System API client: backups, health, models, profile, onboarding, UI bootstrap.
  */
 
-import { API_BASE_URL, request, requestVoid, responseError } from "./client";
+import {
+  API_BASE_URL,
+  apiUrl,
+  request,
+  requestVoid,
+  responseError,
+  runtimeRequestHeaders,
+} from "./client";
 
 export type DependencyStatus = {
   name: string;
@@ -84,8 +91,9 @@ export async function verifySystemBackup(
 }
 
 export async function downloadUserDataExport(): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/system/export`, {
+  const response = await fetch(apiUrl("/system/export"), {
     cache: "no-store",
+    headers: runtimeRequestHeaders(),
   });
   if (!response.ok) {
     throw await responseError(response, "Exporting personal data");
@@ -253,8 +261,9 @@ export async function getModelStatus(
 export async function getProfile(
   signal?: AbortSignal,
 ): Promise<ProfileResponse | null> {
-  const response = await fetch(`${API_BASE_URL}/profile`, {
+  const response = await fetch(apiUrl("/profile"), {
     cache: "no-store",
+    headers: runtimeRequestHeaders(),
     signal,
   });
 

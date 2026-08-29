@@ -5,6 +5,7 @@ import logging
 import os
 import platform
 import threading
+import uuid
 
 import httpx
 
@@ -35,10 +36,15 @@ class Companion:
         self.stop_event = threading.Event()
         self.tray: TrayController | None = None
         self.voice_status = voice_runtime_status()
+        self.session_headers = {}
+        session_token = os.getenv("DESKTOP_SESSION_TOKEN", "").strip()
+        if session_token:
+            self.session_headers["X-Jarvis-Desktop-Session"] = session_token
 
     async def poll_once(self, client: httpx.AsyncClient) -> int:
         response = await client.post(
             f"{self.api_base_url}/notifications/claim",
+            headers=self.session_headers,
             json={
                 "device_id": self.device_id,
                 "display_name": self.display_name,
@@ -52,6 +58,12 @@ class Companion:
         notifications = payload.get("notifications", [])
         delivered_count = 0
         for notification in notifications:
+            notification["desktop_action_id"] = str(
+                uuid.uuid5(
+                    uuid.NAMESPACE_URL,
+                    f"jarvis-toast-snooze:{notification['id']}:{notification.get('attempt_count', 0)}",
+                )
+            )
             results = await asyncio.to_thread(
                 deliver,
                 notification,
@@ -59,6 +71,7 @@ class Companion:
             )
             acknowledge = await client.post(
                 f"{self.api_base_url}/notifications/{notification['id']}/ack",
+                headers=self.session_headers,
                 json={
                     "device_id": self.device_id,
                     "results": results,

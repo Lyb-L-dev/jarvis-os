@@ -23,6 +23,7 @@ import { useChatStream } from "@/components/chat/use-chat-stream";
 import { useConversationList } from "@/components/chat/use-conversation-list";
 import { useVoiceLoop } from "@/components/chat/use-voice-loop";
 import styles from "@/components/v3-convergence.module.css";
+import { recordDesktopReliability } from "@/lib/desktop-reliability";
 
 function formatTimelineDate(value: string) {
   const date = new Date(value);
@@ -48,8 +49,15 @@ export function ChatWorkspace({
   const [input, setInput] = useState("");
   const messageEndRef = useRef<HTMLDivElement>(null);
   const cancelVoiceRef = useRef<() => void>(() => undefined);
+  const fileAnalysisPendingRef = useRef(false);
 
   const list = useConversationList({ setError });
+  const openConversationByIdRef = useRef(list.openConversationById);
+
+  useEffect(() => {
+    openConversationByIdRef.current = list.openConversationById;
+  }, [list.openConversationById]);
+
   const stream = useChatStream({
     list,
     makeConversation: list.makeConversation,
@@ -57,12 +65,55 @@ export function ChatWorkspace({
     input,
     setInput,
     setError,
+    onSubmitResult: ({ outcome, durationMs }) => {
+      if (!fileAnalysisPendingRef.current) return;
+      recordDesktopReliability({ kind: "file_analyze", outcome, durationMs });
+      if (outcome === "succeeded") fileAnalysisPendingRef.current = false;
+    },
   });
   const voice = useVoiceLoop({
     setInput,
     setError,
     onTranscript: stream.submitMessage,
   });
+  const setConversationMode = list.setMode;
+  const setSensitive = stream.setSensitive;
+  const setUseKnowledge = stream.setUseKnowledge;
+
+  useEffect(() => {
+    type TauriCore = { invoke: <T>(command: string, args?: Record<string, unknown>) => Promise<T> };
+    const core = (window as typeof window & { __TAURI__?: { core?: TauriCore } }).__TAURI__?.core;
+    if (!core) return;
+    void core.invoke("desktop_update_set_activity", { busy: stream.sending });
+    return () => {
+      void core.invoke("desktop_update_set_activity", { busy: false });
+    };
+  }, [stream.sending]);
+
+  useEffect(() => {
+    type DesktopOpenDetail = {
+      conversationId?: string | null;
+      draft?: string | null;
+      localOnly?: boolean;
+    };
+    const consume = (detail?: DesktopOpenDetail | null) => {
+      if (!detail) return;
+      if (detail.draft) setInput(detail.draft);
+      if (detail.localOnly) {
+        fileAnalysisPendingRef.current = true;
+        setConversationMode("local");
+        setSensitive(true);
+        setUseKnowledge(false);
+      }
+      if (detail.conversationId) void openConversationByIdRef.current(detail.conversationId);
+      delete (window as typeof window & { __JARVIS_DESKTOP_OPEN__?: DesktopOpenDetail }).__JARVIS_DESKTOP_OPEN__;
+    };
+    const target = window as typeof window & { __JARVIS_DESKTOP_OPEN__?: DesktopOpenDetail };
+    consume(target.__JARVIS_DESKTOP_OPEN__);
+    const listener = (event: Event) => consume((event as CustomEvent<DesktopOpenDetail>).detail);
+    window.addEventListener("jarvis:open-conversation", listener);
+    return () => window.removeEventListener("jarvis:open-conversation", listener);
+  }, [setConversationMode, setSensitive, setUseKnowledge]);
 
   useEffect(() => {
     cancelVoiceRef.current = voice.cancel;
@@ -253,14 +304,20 @@ export function ChatWorkspace({
                     voiceState={voice.state}
                     voiceAvailable={voice.available}
                     voiceReason={voice.status?.reason ?? null}
-                    onToggleVoice={() => {
+                    onStartVoice={() => {
                       if (stream.sending) void stream.stopGeneration();
-                      voice.toggle();
+                      void voice.startListening();
                     }}
+                    onStopVoice={voice.stopListening}
+                    onCancelVoice={voice.cancel}
                     input={input}
                     setInput={setInput}
                     sending={stream.sending}
-                    onSend={() => void stream.submitMessage()}
+                    onSend={() => {
+                      void voice.submitConfirmedVoice(input).then((handled) => {
+                        if (!handled) void stream.submitMessage();
+                      });
+                    }}
                     onStop={() => void stream.stopGeneration()}
                     mode={list.mode}
                     setMode={list.setMode}

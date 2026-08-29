@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DataProtection } from "@/components/data-protection";
+import { DesktopSettings } from "@/components/desktop-settings";
 import { ModelCallHistory } from "@/components/model-call-history";
 import { SystemStatus } from "@/components/system-status";
 
@@ -28,6 +29,8 @@ export default function SettingsPage() {
           API Key 只从本机 .env 读取，页面不会显示密钥内容。
         </p>
       </section>
+
+      <DesktopSettings />
 
       <section className="panel settings-panel data-protection-panel">
         <div className="section-heading">

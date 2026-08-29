@@ -131,6 +131,30 @@ export function useConversationList({
     }
   }
 
+  async function openConversationById(conversationId: string) {
+    if (conversationId === activeId) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const nextDetail = await getConversation(conversationId);
+      setActiveId(nextDetail.id);
+      setDetail(nextDetail);
+      setAgentRouting(savedAgentRouting(nextDetail));
+      setMode(nextDetail.model_mode);
+      setConversations((current) => {
+        const remaining = current.filter((item) => item.id !== nextDetail.id);
+        const { messages: _messages, ...summary } = nextDetail;
+        void _messages;
+        return [summary, ...remaining];
+      });
+      setShowSessions(false);
+    } catch (openError) {
+      setError(openError instanceof Error ? openError.message : "无法打开这个对话");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function makeConversation() {
     setError(null);
     const conversation = await createConversation({ model_mode: mode });
@@ -220,6 +244,7 @@ export function useConversationList({
     setTitleDraft,
     activeMode,
     openConversation,
+    openConversationById,
     makeConversation,
     archiveActiveConversation,
     beginRename,

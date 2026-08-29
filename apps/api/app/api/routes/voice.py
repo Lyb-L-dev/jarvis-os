@@ -12,6 +12,7 @@ from app.db.models import User
 from app.db.session import get_db_session
 from app.schemas.voice import (
     VoiceLoopStatus,
+    VoiceReadiness,
     VoiceSynthesisRequest,
     VoiceTranscription,
 )
@@ -41,6 +42,24 @@ async def _current_user(db: AsyncSession) -> User:
             detail="Complete onboarding before using local voice",
         )
     return user
+
+
+@router.get("/readiness", response_model=VoiceReadiness)
+async def voice_readiness(settings: RuntimeSettings) -> VoiceReadiness:
+    """Report local model readiness without reading user data or loading models."""
+    loop = get_voice_loop(settings)
+    stt_ready, tts_ready = loop.readiness()
+    reason = None
+    if not settings.v3_voice_loop_enabled:
+        reason = "feature_disabled"
+    elif not stt_ready or not tts_ready:
+        reason = "local_models_missing"
+    return VoiceReadiness(
+        enabled=settings.v3_voice_loop_enabled,
+        stt_ready=stt_ready,
+        tts_ready=tts_ready,
+        reason=reason,
+    )
 
 
 @router.get("/status", response_model=VoiceLoopStatus)

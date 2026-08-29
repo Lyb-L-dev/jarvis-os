@@ -116,8 +116,10 @@ async def owned_notification(
     db: AsyncSession,
     notification_id: uuid.UUID,
     user_id: uuid.UUID,
+    *,
+    for_update: bool = False,
 ) -> Notification:
-    notification = await db.scalar(
+    query = (
         select(Notification)
         .where(
             Notification.id == notification_id,
@@ -129,6 +131,9 @@ async def owned_notification(
         )
         .execution_options(populate_existing=True)
     )
+    if for_update:
+        query = query.with_for_update()
+    notification = await db.scalar(query)
     if notification is None:
         raise HTTPException(status_code=404, detail="Reminder not found")
     return notification
@@ -371,6 +376,7 @@ async def claim_notifications(
                 priority=notification.priority,
                 category=notification.category,
                 sensitive=notification.sensitive,
+                attempt_count=notification.attempt_count,
                 voice_rate=preference.voice_rate,
                 voice_volume=preference.voice_volume,
                 voice_engine=preference.voice_engine,
@@ -392,7 +398,12 @@ async def acknowledge_notification(
     db: DatabaseSession,
 ) -> NotificationResponse:
     user = await current_user(db)
-    notification = await owned_notification(db, notification_id, user.id)
+    notification = await owned_notification(
+        db,
+        notification_id,
+        user.id,
+        for_update=True,
+    )
     if notification.status != "claimed" or notification.claimed_by != payload.device_id:
         raise HTTPException(status_code=409, detail="Reminder is not claimed by this device")
     now = utc_now()
@@ -441,12 +452,20 @@ async def snooze_notification(
     db: DatabaseSession,
 ) -> NotificationResponse:
     user = await current_user(db)
-    notification = await owned_notification(db, notification_id, user.id)
+    notification = await owned_notification(
+        db,
+        notification_id,
+        user.id,
+        for_update=True,
+    )
     if notification.status in {"cancelled", "dismissed"}:
         raise HTTPException(status_code=409, detail="Reminder cannot be snoozed")
+    if payload.action_id and notification.last_snooze_action_id == payload.action_id:
+        return notification_response(notification)
     notification.status = "snoozed"
     notification.available_at = utc_now() + timedelta(minutes=payload.minutes)
     notification.snooze_count += 1
+    notification.last_snooze_action_id = payload.action_id
     notification.claimed_at = None
     notification.claimed_by = None
     notification.claimed_channels = []

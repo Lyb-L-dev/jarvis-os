@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jarvis OS · 快速提问</title>
+    <link rel="stylesheet" href="quick.css?v=4.0.0-beta.3" />
+    <script src="quick.js?v=4.0.0-beta.3" defer></script>
+  </head>
+  <body>
+    <main class="quick-shell">
+      <header class="quick-header">
+        <div>
+          <p class="eyebrow">JARVIS QUICK · CTRL + ALT + SPACE</p>
+          <h1>现在想处理什么？</h1>
+        </div>
+        <button class="icon-button" id="hide-button" type="button" aria-label="隐藏快速窗口">×</button>
+      </header>
+
+      <section class="answer-panel" id="answer-panel" aria-labelledby="answer-title" hidden>
+        <div class="answer-heading">
+          <span class="answer-dot" aria-hidden="true"></span>
+          <strong id="answer-title">Jarvis</strong>
+          <span id="answer-state">正在思考</span>
+        </div>
+        <p id="answer-text" aria-live="polite"></p>
+        <button class="text-button" id="continue-button" type="button" hidden>在主窗口继续</button>
+      </section>
+
+      <section class="file-preview" id="file-preview" aria-labelledby="file-name" hidden>
+        <div>
+          <span class="file-kind">本地文件 · 待确认</span>
+          <strong id="file-name"></strong>
+          <small id="file-meta"></small>
+        </div>
+        <p>确认后才读取正文；默认使用本地模型，不自动加入知识库，不修改源文件。</p>
+        <div class="file-actions">
+          <button id="file-cancel" type="button">取消</button>
+          <button id="file-confirm" type="button">读取到草稿</button>
+        </div>
+      </section>
+
+      <form id="quick-form">
+        <label class="sr-only" for="quick-input">向 Jarvis 提问</label>
+        <textarea id="quick-input" maxlength="20000" rows="4" placeholder="输入问题；Enter 发送，Shift+Enter 换行"></textarea>
+        <div class="composer-footer">
+          <div class="entry-actions">
+            <label class="entry-button" for="file-input" title="选择一个 Markdown 或文本文件">
+              <span aria-hidden="true">＋</span>
+              <span>文件</span>
+            </label>
+            <input id="file-input" type="file" accept=".md,.txt,text/markdown,text/plain" />
+            <button class="entry-button" id="voice-button" type="button" aria-pressed="false">
+              <span aria-hidden="true">●</span>
+              <span id="voice-label">按住说话</span>
+            </button>
+          </div>
+          <button class="send-button" id="send-button" type="submit">发送</button>
+        </div>
+      </form>
+
+      <footer>
+        <span id="privacy-note">草稿仅驻留当前 App 进程</span>
+        <span id="feedback" role="status" aria-live="polite">Esc 隐藏</span>
+      </footer>
+    </main>
+  </body>
+</html>

@@ -4,7 +4,7 @@
 
 ## Platform
 
-web
+adaptive
 
 ## Users
 
@@ -55,6 +55,8 @@ Jarvis 的独特机制是“对话驱动的双侧临时工作台”：中央对�
 
 - 目标架构和阶段计划：`docs/JARVIS_OS_V3_PLAN.md`；
 - V3 已交付证据：`docs/JARVIS_OS_V3_DELIVERY_LOG.md`；
+- V4 Windows 桌面版路线图：`docs/JARVIS_OS_V4_PLAN.md`；
+- V4 产品、交互、需求编号与发布门禁：`docs/JARVIS_OS_V4_PRD.md`；
 - 现有对话工作区：`apps/web/src/components/chat-workspace.tsx`；
 - 现有审批中心：`apps/web/src/components/approval-center.tsx`；
 - 现有领域页面和真实数据接口位于 `apps/web/src/app/` 与 `apps/web/src/lib/api/`；

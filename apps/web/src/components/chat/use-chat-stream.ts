@@ -31,6 +31,7 @@ export function useChatStream({
   input,
   setInput,
   setError,
+  onSubmitResult,
 }: {
   list: ChatList;
   makeConversation: () => Promise<ConversationSummary>;
@@ -38,6 +39,10 @@ export function useChatStream({
   input: string;
   setInput: (value: string) => void;
   setError: (error: string | null) => void;
+  onSubmitResult?: (result: {
+    outcome: "succeeded" | "failed" | "cancelled";
+    durationMs: number;
+  }) => void;
 }) {
   const [sending, setSending] = useState(false);
   const [sensitive, setSensitive] = useState(false);
@@ -63,6 +68,7 @@ export function useChatStream({
   async function submitMessage(contentOverride?: string): Promise<string | null> {
     const content = (contentOverride ?? input).trim();
     if (!content || sending) return null;
+    const startedAt = performance.now();
     if (contentOverride === undefined) stopDictation();
     let routePreview: import("@/lib/api").AgentRouting | null = null;
     if (list.mode === "deep" && !sensitive) {
@@ -82,7 +88,10 @@ export function useChatStream({
       list.mode === "deep" && !sensitive
         ? window.confirm(deepSeekConfirmationText(routePreview, "生成回答"))
         : false;
-    if (list.mode === "deep" && !sensitive && !paidCallConfirmed) return null;
+    if (list.mode === "deep" && !sensitive && !paidCallConfirmed) {
+      onSubmitResult?.({ outcome: "cancelled", durationMs: performance.now() - startedAt });
+      return null;
+    }
 
     setSending(true);
     setStreamHasContent(false);
@@ -93,6 +102,7 @@ export function useChatStream({
     let targetId = list.activeId;
     let currentDetail = list.detail;
     let completedResponse: string | null = null;
+    let submitOutcome: "succeeded" | "failed" | "cancelled" = "succeeded";
     try {
       if (!targetId) {
         const created = await makeConversation();
@@ -210,6 +220,7 @@ export function useChatStream({
       );
     } catch (sendError) {
       const wasStopped = streamControllerRef.current?.signal.aborted ?? false;
+      submitOutcome = wasStopped ? "cancelled" : "failed";
       if (!wasStopped) {
         setInput(content);
         setError(
@@ -237,6 +248,10 @@ export function useChatStream({
       streamRequestIdRef.current = null;
       setStreamHasContent(false);
       setSending(false);
+      onSubmitResult?.({
+        outcome: submitOutcome,
+        durationMs: performance.now() - startedAt,
+      });
     }
     return completedResponse;
   }

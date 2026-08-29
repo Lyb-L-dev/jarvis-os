@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jarvis OS 正在启动</title>
+    <link rel="stylesheet" href="styles.css?v=4.0.0-beta.3" />
+    <script src="app.js?v=4.0.0-beta.3" defer></script>
+  </head>
+  <body>
+    <main class="launch-shell">
+      <header class="brand-row">
+        <div class="brand-mark" aria-hidden="true">J</div>
+        <div>
+          <p class="eyebrow">JARVIS OS · WINDOWS</p>
+          <h1>正在准备你的工作台</h1>
+        </div>
+      </header>
+
+      <section class="setup-panel" id="setup-panel" aria-labelledby="setup-title" hidden>
+        <div class="setup-heading">
+          <p class="eyebrow">首次运行 · 第 1 步</p>
+          <h2 id="setup-title">把现有配置安全带入桌面版</h2>
+          <p>旧文件保持原样；普通设置写入用户配置目录，密钥由 Windows DPAPI 按当前用户加密。</p>
+        </div>
+
+        <div class="migration-source" id="migration-source">
+          <label class="file-choice" for="legacy-file">
+            <span>选择旧项目的 .env</span>
+            <small>仅处理你明确选择的文件，最大 1 MiB</small>
+          </label>
+          <input id="legacy-file" type="file" accept=".env,text/plain" />
+          <button class="secondary-button" id="skip-import" type="button">不导入，使用全新配置</button>
+        </div>
+
+        <form id="migration-preview" hidden>
+          <div class="preview-meta">
+            <div>
+              <strong id="preview-file">.env</strong>
+              <span id="preview-summary">等待预览</span>
+            </div>
+            <span class="privacy-badge">旧文件不改动</span>
+          </div>
+          <fieldset id="migration-fields" aria-describedby="migration-help"></fieldset>
+          <p id="migration-help" class="migration-help">取消不会创建普通配置，也不会修改或删除旧文件。</p>
+          <div class="setup-actions">
+            <button class="secondary-button" id="cancel-import" type="button">返回</button>
+            <button class="primary-button" id="apply-import" type="submit">导入所选并启动</button>
+          </div>
+        </form>
+        <p class="setup-feedback" id="setup-feedback" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="status-card" id="status-card" aria-live="polite" aria-atomic="true">
+        <div class="pulse" aria-hidden="true"></div>
+        <div class="status-copy">
+          <strong id="runtime-stage">正在检查运行环境</strong>
+          <p id="runtime-message">Jarvis 会在这里说明真实启动进度。</p>
+        </div>
+      </section>
+
+      <ol class="stage-list" aria-label="启动阶段">
+        <li data-stage="preflight"><span></span>环境检查</li>
+        <li data-stage="dependencies"><span></span>依赖与数据库</li>
+        <li data-stage="migration"><span></span>配置与迁移</li>
+        <li data-stage="core"><span></span>Jarvis Core</li>
+        <li data-stage="interface"><span></span>对话工作台</li>
+      </ol>
+
+      <div class="error-actions" id="error-actions" hidden>
+        <button id="retry-button" type="button">重新尝试</button>
+        <p id="error-code"></p>
+      </div>
+
+      <footer id="launch-footer">
+        <span id="elapsed">已用时 0 秒</span>
+        <span>本地优先 · 人在回路</span>
+      </footer>
+    </main>
+  </body>
+</html>

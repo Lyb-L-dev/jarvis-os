@@ -8,6 +8,9 @@ import {
   type VoiceLoopState,
   type VoiceLoopStatus,
 } from "@/lib/api";
+import { recordDesktopReliability } from "@/lib/desktop-reliability";
+
+const RECORDING_TIMEOUT_MS = 60_000;
 
 export function useVoiceLoop({
   setInput,
@@ -26,6 +29,14 @@ export function useVoiceLoop({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const sessionRef = useRef(0);
+  const recordingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const voiceDraftRef = useRef(false);
+  const listeningRequestedRef = useRef(false);
+
+  const clearRecordingTimer = useCallback(() => {
+    if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
+    recordingTimerRef.current = null;
+  }, []);
 
   const stopPlayback = useCallback(() => {
     const audio = audioRef.current;
@@ -39,7 +50,11 @@ export function useVoiceLoop({
   }, []);
 
   const cancel = useCallback(() => {
+    const hadVoiceWork = Boolean(recorderRef.current || requestRef.current);
     sessionRef.current += 1;
+    clearRecordingTimer();
+    voiceDraftRef.current = false;
+    listeningRequestedRef.current = false;
     requestRef.current?.abort();
     requestRef.current = null;
     const recorder = recorderRef.current;
@@ -52,7 +67,10 @@ export function useVoiceLoop({
     chunksRef.current = [];
     stopPlayback();
     setState("idle");
-  }, [stopPlayback]);
+    if (hadVoiceWork) {
+      recordDesktopReliability({ kind: "voice_transcription", outcome: "cancelled" });
+    }
+  }, [clearRecordingTimer, stopPlayback]);
 
   const playResponse = useCallback(
     async (text: string, session: number) => {
@@ -90,6 +108,7 @@ export function useVoiceLoop({
 
   const finishRecording = useCallback(
     async (recording: Blob, session: number) => {
+      const startedAt = performance.now();
       setState("transcribing");
       const controller = new AbortController();
       requestRef.current = controller;
@@ -103,39 +122,49 @@ export function useVoiceLoop({
           return;
         }
         setInput(result.text);
-        setState("responding");
-        const response = await onTranscript(result.text);
-        if (session !== sessionRef.current) return;
-        if (response) await playResponse(response, session);
-        else setState("idle");
+        voiceDraftRef.current = true;
+        setState("idle");
+        recordDesktopReliability({
+          kind: "voice_transcription",
+          outcome: "succeeded",
+          durationMs: performance.now() - startedAt,
+        });
       } catch (reason) {
         if (!controller.signal.aborted) {
           setError(reason instanceof Error ? reason.message : "本地语音转写失败");
           setState("idle");
         }
+        recordDesktopReliability({
+          kind: "voice_transcription",
+          outcome: controller.signal.aborted ? "cancelled" : "failed",
+          durationMs: performance.now() - startedAt,
+        });
       } finally {
         if (requestRef.current === controller) requestRef.current = null;
       }
     },
-    [onTranscript, playResponse, setError, setInput],
+    [setError, setInput],
   );
 
   const startListening = useCallback(async () => {
     cancel();
+    listeningRequestedRef.current = true;
     const session = sessionRef.current;
     if (!status?.enabled || !status.stt_ready || !status.tts_ready) {
       setError("本地语音尚未启用或模型未就绪，请继续使用键盘输入。");
+      recordDesktopReliability({ kind: "voice_model", outcome: "not_configured" });
       return;
     }
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
       setError("当前浏览器无法录音，请继续使用键盘输入。");
+      recordDesktopReliability({ kind: "voice_permission", outcome: "failed" });
       return;
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
       });
-      if (session !== sessionRef.current) {
+      if (session !== sessionRef.current || !listeningRequestedRef.current) {
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
@@ -145,6 +174,7 @@ export function useVoiceLoop({
         if (event.data.size) chunksRef.current.push(event.data);
       };
       recorder.onstop = () => {
+        clearRecordingTimer();
         stream.getTracks().forEach((track) => track.stop());
         recorderRef.current = null;
         const recording = new Blob(chunksRef.current, { type: recorder.mimeType });
@@ -157,9 +187,21 @@ export function useVoiceLoop({
         setError("麦克风录音中断，请检查设备后重试。");
       };
       recorderRef.current = recorder;
+      stream.getTracks().forEach((track) => {
+        track.onended = () => {
+          if (recorderRef.current !== recorder) return;
+          cancel();
+          setError("麦克风连接已断开，录音已取消，草稿不会自动发送。");
+        };
+      });
       setError(null);
       setState("listening");
       recorder.start();
+      recordingTimerRef.current = setTimeout(() => {
+        if (recorderRef.current !== recorder) return;
+        cancel();
+        setError("录音已达到 60 秒上限并安全取消，草稿不会自动发送。");
+      }, RECORDING_TIMEOUT_MS);
     } catch (reason) {
       setState("idle");
       setError(
@@ -167,8 +209,29 @@ export function useVoiceLoop({
           ? "麦克风权限未开启，请允许访问后重试，或继续键盘输入。"
           : "麦克风不可用，请检查设备后重试，或继续键盘输入。",
       );
+      recordDesktopReliability({ kind: "voice_permission", outcome: "failed" });
     }
-  }, [cancel, finishRecording, setError, status]);
+  }, [cancel, clearRecordingTimer, finishRecording, setError, status]);
+
+  const stopListening = useCallback(() => {
+    listeningRequestedRef.current = false;
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+  }, []);
+
+  const submitConfirmedVoice = useCallback(
+    async (content: string) => {
+      if (!voiceDraftRef.current) return false;
+      voiceDraftRef.current = false;
+      const session = sessionRef.current;
+      setState("responding");
+      const response = await onTranscript(content);
+      if (session !== sessionRef.current) return true;
+      if (response) await playResponse(response, session);
+      else setState("idle");
+      return true;
+    },
+    [onTranscript, playResponse],
+  );
 
   const toggle = useCallback(() => {
     if (state === "listening") {
@@ -181,8 +244,20 @@ export function useVoiceLoop({
   useEffect(() => {
     const controller = new AbortController();
     void getVoiceLoopStatus(controller.signal)
-      .then(setStatus)
-      .catch(() => setStatus(null));
+      .then((nextStatus) => {
+        setStatus(nextStatus);
+        recordDesktopReliability({
+          kind: "voice_model",
+          outcome:
+            nextStatus.enabled && nextStatus.stt_ready && nextStatus.tts_ready
+              ? "succeeded"
+              : "not_configured",
+        });
+      })
+      .catch(() => {
+        setStatus(null);
+        recordDesktopReliability({ kind: "voice_model", outcome: "failed" });
+      });
     return () => controller.abort();
   }, []);
 
@@ -194,6 +269,9 @@ export function useVoiceLoop({
     listening: state === "listening",
     available: Boolean(status?.enabled && status.stt_ready && status.tts_ready),
     toggle,
+    startListening,
+    stopListening,
+    submitConfirmedVoice,
     cancel,
   };
 }
