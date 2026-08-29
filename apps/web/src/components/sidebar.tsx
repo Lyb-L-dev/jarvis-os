@@ -11,6 +11,7 @@ import {
   Computer,
   Filter,
   FlaskConical,
+  GraduationCap,
   Languages,
   LayoutDashboard,
   MessageSquareText,
@@ -48,6 +49,12 @@ const primaryNavigation = [
     label: "English Coach",
     href: "/english",
     icon: Languages,
+    group: "SPECIALISTS",
+  },
+  {
+    label: "学习教练",
+    href: "/learning",
+    icon: GraduationCap,
     group: "SPECIALISTS",
   },
   {
