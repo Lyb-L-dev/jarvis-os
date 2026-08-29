@@ -340,10 +340,11 @@ h2 {
 }
 
 .stage-list li span {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #343b39;
+  transition: background 180ms ease, box-shadow 180ms ease;
 }
 
 .stage-list li.is-active,
@@ -353,10 +354,12 @@ h2 {
 
 .stage-list li.is-active span {
   background: #61d4ad;
+  box-shadow: 0 0 0 4px rgb(97 212 173 / 18%);
 }
 
 .stage-list li.is-complete span {
   background: #2e7760;
+  box-shadow: 0 0 0 3px rgb(46 119 96 / 22%);
 }
 
 .error-actions {

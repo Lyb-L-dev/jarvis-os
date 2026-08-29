@@ -1373,6 +1373,15 @@ fn show_main_window_on_main_thread(
                 format!("无法聚焦 Jarvis 主窗口：{error}"),
             )
         })?;
+        // 一进去即大屏：window-state 插件可能恢复上一次的小窗状态，
+        // 显示后显式最大化，保证每次启动都以大屏工作台呈现。
+        window.maximize().map_err(|error| {
+            RuntimeFailure::new(
+                "interface",
+                "MAIN_WINDOW_MAXIMIZE_FAILED",
+                format!("无法最大化 Jarvis 主窗口：{error}"),
+            )
+        })?;
     }
     if let Some(splash) = app.get_webview_window("splash") {
         let _ = splash.hide();

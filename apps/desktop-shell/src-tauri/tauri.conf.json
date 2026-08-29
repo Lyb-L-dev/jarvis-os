@@ -16,12 +16,12 @@
         "label": "splash",
         "title": "Jarvis OS — 正在启动",
         "url": "splash/index.html",
-        "width": 520,
-        "height": 620,
-        "minWidth": 520,
-        "minHeight": 620,
-        "maxWidth": 520,
-        "maxHeight": 620,
+        "width": 580,
+        "height": 700,
+        "minWidth": 580,
+        "minHeight": 700,
+        "maxWidth": 580,
+        "maxHeight": 700,
         "center": true,
         "resizable": false,
         "maximizable": false,
@@ -42,7 +42,10 @@
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["SimpChinese", "English"],
+        "languages": [
+          "SimpChinese",
+          "English"
+        ],
         "displayLanguageSelector": false,
         "startMenuFolder": "Jarvis OS",
         "installerHooks": "windows/installer-hooks.nsh"
