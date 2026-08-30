@@ -29,50 +29,51 @@
 }
 
 :root {
-  --bg: #09090b;
-  --panel: rgba(17, 17, 23, 0.7);
-  --panel-strong: rgba(16, 16, 22, 0.94);
-  --line: rgba(255, 255, 255, 0.075);
-  --line-strong: rgba(34, 211, 238, 0.2);
-  --text: #f4f4f5;
-  --muted: #71717a;
-  --cyan: #22d3ee;
-  --cyan-hot: #a5f3fc;
-  --cyan-deep: #0891b2;
-  --cyan-soft: rgba(34, 211, 238, 0.1);
-  --violet: #6366f1;
-  --blue: #3b82f6;
-  --amber: #f6bd68;
-  --green: #62e4aa;
-  --danger: #ff667a;
+  /* 墨·琥珀 Ink & Amber — 石墨底 · 象牙文字 · 单一琥珀点缀（2026-08-30 重设计） */
+  --bg: #0b0c0e;
+  --panel: rgba(19, 20, 24, 0.88);
+  --panel-strong: #16171b;
+  --line: rgba(255, 255, 255, 0.065);
+  --line-strong: rgba(217, 161, 59, 0.3);
+  --text: #ecebe6;
+  --muted: #8b8a83;
+  --cyan: #d9a13b;
+  --cyan-hot: #ecc97e;
+  --cyan-deep: #8a6420;
+  --cyan-soft: rgba(217, 161, 59, 0.1);
+  --violet: #8a80d8;
+  --blue: #6f93c4;
+  --amber: #d9a13b;
+  --green: #85b891;
+  --danger: #d97d7d;
   --font-display: var(--font-geist-sans), "Noto Sans SC", "Microsoft YaHei", sans-serif;
   --font-mono: var(--font-geist-mono), "Cascadia Code", Consolas, monospace;
-  --background: #09090b;
-  --foreground: #f4f4f5;
-  --card: #111116;
-  --card-foreground: #f4f4f5;
-  --popover: #18181b;
-  --popover-foreground: #f4f4f5;
-  --primary: #22d3ee;
-  --primary-foreground: #071015;
-  --secondary: #27272a;
-  --secondary-foreground: #fafafa;
-  --muted-foreground: #a1a1aa;
-  --accent: #27272a;
-  --accent-foreground: #fafafa;
-  --destructive: #fb7185;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.08);
-  --ring: #22d3ee;
-  --radius: 1rem;
+  --background: #0b0c0e;
+  --foreground: #ecebe6;
+  --card: #141519;
+  --card-foreground: #ecebe6;
+  --popover: #1a1b20;
+  --popover-foreground: #ecebe6;
+  --primary: #d9a13b;
+  --primary-foreground: #141310;
+  --secondary: #232428;
+  --secondary-foreground: #ecebe6;
+  --muted-foreground: #a09e96;
+  --accent: #232428;
+  --accent-foreground: #ecebe6;
+  --destructive: #d97d7d;
+  --border: rgba(255, 255, 255, 0.07);
+  --input: rgba(255, 255, 255, 0.07);
+  --ring: #d9a13b;
+  --radius: 0.875rem;
 
-  /* Jarvis Design Language 2.0 · 层级与动效令牌 */
-  --bg-0: #07070a;
-  --bg-1: rgba(255, 255, 255, 0.03);
-  --bg-2: rgba(255, 255, 255, 0.06);
-  --text-0: #f4f4f5;
-  --text-1: #a1a1aa;
-  --text-2: #7a7f92;
+  /* 层级与动效令牌 */
+  --bg-0: #08090b;
+  --bg-1: rgba(255, 255, 255, 0.025);
+  --bg-2: rgba(255, 255, 255, 0.05);
+  --text-0: #ecebe6;
+  --text-1: #a09e96;
+  --text-2: #75736c;
   --text-display: clamp(2.5rem, 5vw, 3.5rem);
   --text-title: 1.75rem;
   --text-heading: 1.25rem;
@@ -23926,4 +23927,144 @@ body:has(.tablet-terminal) .app-header {
   .learning-block-form {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* ==========================================================================
+   墨·琥珀 Ink & Amber — 全站风格覆盖层（2026-08-30 重设计）
+   石墨底 · 象牙文字 · 单一琥珀点缀 · 1px 细线 · 去渐变去光晕
+   本层置于文件末尾，按级联规则接管同名组件的旧配色。
+   ========================================================================== */
+
+body {
+  background: var(--bg);
+}
+
+/* 侧边栏：石墨面板 + 右缘细线，去扫描线与青色渐变 */
+.sidebar {
+  background: #101114;
+  border-right: 1px solid var(--line);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.sidebar::after,
+.sidebar-scanline {
+  display: none;
+}
+
+.brand-mark {
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: #17181c;
+  box-shadow: none;
+}
+
+.brand-name {
+  color: var(--text);
+  letter-spacing: 0.22em;
+}
+
+.brand-version {
+  color: #75736c;
+}
+
+.nav-group-label span {
+  color: #6f6d66;
+  letter-spacing: 0.18em;
+}
+
+.nav-group-label i {
+  background: var(--line);
+}
+
+.sidebar-life-status strong {
+  color: var(--text);
+}
+
+.sidebar-life-status small {
+  color: #75736c;
+}
+
+/* 面板：平实表面 + 细线，去玻璃模糊 */
+.panel {
+  background: #131418;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.glass-panel {
+  background: var(--bg-1);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* 顶栏与标题：象牙层级 + 琥珀细节 */
+.eyebrow {
+  color: var(--amber);
+  letter-spacing: 0.2em;
+}
+
+.topbar h1 {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.topbar h1 span {
+  color: #75736c;
+  font-weight: 500;
+}
+
+.section-heading h3 {
+  color: var(--text);
+}
+
+/* 按钮：实心象牙主按钮，去青色渐变 */
+.primary-button {
+  color: #14130f;
+  background: #e6e2d8;
+  border: 0;
+  box-shadow: none;
+  font-weight: 650;
+}
+
+.primary-button:hover {
+  background: #f2eee4;
+}
+
+.ghost-button {
+  color: #a09e96;
+  background: transparent;
+  border: 1px solid var(--line);
+}
+
+.ghost-button:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.text-button {
+  color: #8b8a83;
+}
+
+/* 学习教练点缀改琥珀 */
+.learning-mastery-fill {
+  background: var(--amber);
+}
+
+.learning-item-active {
+  border-color: rgba(217, 161, 59, 0.35);
+}
+
+.learning-grade-green {
+  color: #9ec6a6;
+}
+
+.learning-grade-yellow {
+  color: #d9c37f;
+}
+
+.learning-grade-red {
+  color: #d98a8a;
 }

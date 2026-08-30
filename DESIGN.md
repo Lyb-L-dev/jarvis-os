@@ -1,24 +1,24 @@
 ---
 name: Jarvis OS
-description: A restrained, evidence-led interface for a local-first personal AI operating system.
+description: 墨·琥珀 — 石墨底、象牙文字、单一琥珀点缀的精装仪器风，为本地优先的个人 AI 操作系统而设。
 colors:
-  canvas: "#09090b"
-  canvas-deep: "#07070a"
-  surface: "#111116"
-  surface-raised: "#18181b"
-  field: "#11171e"
-  text-primary: "#f4f4f5"
-  text-secondary: "#a1a1aa"
-  workspace-secondary: "#98a2aa"
-  energy: "#22d3ee"
-  energy-hot: "#a5f3fc"
-  energy-deep: "#0891b2"
-  action-fill: "linear-gradient(135deg, #8aeeff, #48d2eb)"
-  violet: "#6366f1"
-  blue: "#3b82f6"
-  success: "#62e4aa"
-  warning: "#f6bd68"
-  danger: "#ff667a"
+  canvas: "#0b0c0e"
+  canvas-deep: "#08090b"
+  surface: "#131418"
+  surface-raised: "#1a1b20"
+  field: "#17181c"
+  text-primary: "#ecebe6"
+  text-secondary: "#a09e96"
+  workspace-secondary: "#8b8a83"
+  energy: "#d9a13b"
+  energy-hot: "#ecc97e"
+  energy-deep: "#8a6420"
+  action-fill: "#e6e2d8"
+  violet: "#8a80d8"
+  blue: "#6f93c4"
+  success: "#9ec6a6"
+  warning: "#d9c37f"
+  danger: "#d98a8a"
 typography:
   display:
     fontFamily: "Geist, Noto Sans SC, Microsoft YaHei, sans-serif"

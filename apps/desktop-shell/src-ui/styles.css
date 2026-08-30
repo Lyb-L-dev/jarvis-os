@@ -45,7 +45,7 @@ body {
   place-items: center;
   border: 1px solid rgb(113 230 190 / 38%);
   border-radius: 15px;
-  background: linear-gradient(150deg, #1f795e, #103c31);
+  background: linear-gradient(150deg, #6e5220, #2a2115);
   box-shadow: 0 12px 36px rgb(29 146 110 / 20%);
   color: #dcfff3;
   font-size: 24px;
@@ -54,7 +54,7 @@ body {
 
 .eyebrow {
   margin: 0 0 5px;
-  color: #75c7ab;
+  color: #cfa14f;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -195,7 +195,7 @@ h2 {
 }
 
 .migration-field input {
-  accent-color: #61d4ad;
+  accent-color: #d9a13b;
 }
 
 .field-name {
@@ -261,8 +261,8 @@ h2 {
 }
 
 .primary-button {
-  border: 1px solid #61d4ad;
-  background: #61d4ad;
+  border: 1px solid #d9a13b;
+  background: #d9a13b;
   color: #07100d;
   font-weight: 650;
 }
@@ -303,7 +303,7 @@ h2 {
   height: 11px;
   flex: 0 0 auto;
   border-radius: 50%;
-  background: #61d4ad;
+  background: #d9a13b;
   box-shadow: 0 0 0 0 rgb(97 212 173 / 40%);
   animation: pulse 1.6s infinite;
 }
@@ -353,12 +353,12 @@ h2 {
 }
 
 .stage-list li.is-active span {
-  background: #61d4ad;
+  background: #d9a13b;
   box-shadow: 0 0 0 4px rgb(97 212 173 / 18%);
 }
 
 .stage-list li.is-complete span {
-  background: #2e7760;
+  background: #8a6420;
   box-shadow: 0 0 0 3px rgb(46 119 96 / 22%);
 }
 
