@@ -44,7 +44,7 @@ def main() -> None:
         ),
         dashboard_url=os.getenv(
             "JARVIS_DASHBOARD_URL",
-            "http://127.0.0.1:3000/notifications",
+            f"http://127.0.0.1:{os.getenv('WEB_PORT', '3000')}/notifications",
         ),
         poll_seconds=int(os.getenv("JARVIS_POLL_SECONDS", "10")),
         dry_run=options.dry_run,

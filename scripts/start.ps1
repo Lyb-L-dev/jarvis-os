@@ -289,6 +289,7 @@ if (
 }
 if (-not $companionProcess) {
     Write-Host "Starting Jarvis Windows Companion..."
+    $env:JARVIS_DASHBOARD_URL = "http://127.0.0.1:$webPort/notifications"
     $companionArguments = @("-m", "jarvis_desktop")
     if ($env:JARVIS_DESKTOP_SHELL -eq "1") {
         $companionArguments += "--no-tray"
