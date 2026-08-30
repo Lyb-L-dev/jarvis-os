@@ -80,6 +80,26 @@ function Test-EnvFlag {
     return $null -ne $match
 }
 
+function Get-EnvValue {
+    param(
+        [string]$Name,
+        [string]$Default
+    )
+
+    $environmentFile = Join-Path $ProjectRoot ".env"
+    if (Test-Path -LiteralPath $environmentFile) {
+        $match = Select-String `
+            -LiteralPath $environmentFile `
+            -Pattern "^$([Regex]::Escape($Name))\s*=\s*(\S+)\s*$"
+        if ($match) {
+            return $match.Matches[0].Groups[1].Value
+        }
+    }
+    return $Default
+}
+
+$webPort = [int](Get-EnvValue -Name "WEB_PORT" -Default "3000")
+
 $pageConvergenceEnabled = Test-EnvFlag -Name "V3_PAGE_CONVERGENCE_ENABLED"
 $desktopShellEnabled = $env:JARVIS_DESKTOP_SHELL -eq "1"
 $desktopStaticUiEnabled =
@@ -95,11 +115,11 @@ if ($desktopStaticUiEnabled) {
 }
 if ($pageConvergenceEnabled) {
     $env:V3_PAGE_CONVERGENCE_ENABLED = "true"
-    $InterfaceUrl = "http://127.0.0.1:3000/chat"
+    $InterfaceUrl = "http://127.0.0.1:$webPort/chat"
 }
 else {
     $env:V3_PAGE_CONVERGENCE_ENABLED = "false"
-    $InterfaceUrl = "http://127.0.0.1:3000"
+    $InterfaceUrl = "http://127.0.0.1:$webPort"
 }
 
 if (-not (Test-Path -LiteralPath $PythonPath)) {
@@ -318,7 +338,7 @@ if (-not $backupProcess) {
 }
 
 if ($desktopStaticUiEnabled) {
-    $trackedWebProcessId = Get-ListeningProcessId -Port 3000
+    $trackedWebProcessId = Get-ListeningProcessId -Port $webPort
     if (
         $trackedWebProcessId -and
         $existingRuntime -and
@@ -372,14 +392,14 @@ $webConfigurationChanged =
     $null -eq $previousPageConvergenceEnabled -or
     $previousPageConvergenceEnabled -ne $pageConvergenceEnabled
 
-$webProcessId = Get-ListeningProcessId -Port 3000
+$webProcessId = Get-ListeningProcessId -Port $webPort
 if ($webProcessId -and ($needsWebBuild -or $webConfigurationChanged)) {
     if (
         -not $existingRuntime -or
         -not $existingRuntime.web_pid -or
         [int]$existingRuntime.web_pid -ne $webProcessId
     ) {
-        throw "Port 3000 is used by an untracked process; refusing to restart it."
+            throw "Port $webPort is used by an untracked process; refusing to restart it."
     }
     $webProcess = Get-Process -Id $webProcessId -ErrorAction SilentlyContinue
     if (-not $webProcess -or $webProcess.ProcessName -ne "node") {
@@ -402,11 +422,11 @@ if ($needsWebBuild) {
     }
 }
 
-if (-not (Get-ListeningProcessId -Port 3000)) {
-    Write-Host "Starting Jarvis interface..."
+if (-not (Get-ListeningProcessId -Port $webPort)) {
+    Write-Host "Starting Jarvis interface on port $webPort..."
     $npmPath = (Get-Command npm.cmd).Source
     Start-Process -WindowStyle Hidden -FilePath $npmPath `
-        -ArgumentList @("run", "start") `
+        -ArgumentList @("run", "start", "--", "-p", "$webPort") `
         -WorkingDirectory $WebDirectory
 }
 Wait-ForUrl -Url $InterfaceUrl -Name "Jarvis interface"
@@ -414,7 +434,8 @@ Wait-ForUrl -Url $InterfaceUrl -Name "Jarvis interface"
 
 $runtime = @{
     api_pid = Get-ListeningProcessId -Port 8000
-    web_pid = if ($desktopStaticUiEnabled) { $null } else { Get-ListeningProcessId -Port 3000 }
+    web_pid = if ($desktopStaticUiEnabled) { $null } else { Get-ListeningProcessId -Port $webPort }
+    web_port = $webPort
     companion_pid = $companionProcess.Id
     backup_pid = $backupProcess.Id
     browser_worker_pid = if ($browserWorkerProcess) { $browserWorkerProcess.Id } else { $null }
