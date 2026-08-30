@@ -1,27 +1,16 @@
 "use client";
 
 import {
-  Activity,
   Bell,
-  BriefcaseBusiness,
   BookOpen,
   Brain,
-  ChartNoAxesCombined,
-  CircleDollarSign,
-  Computer,
-  Filter,
-  FlaskConical,
+  BriefcaseBusiness,
   GraduationCap,
   Languages,
-  LayoutDashboard,
   MessageSquareText,
-  PartyPopper,
-  Radar,
-  ScanSearch,
   Route,
   Settings,
   ShieldCheck,
-  Smile,
 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
@@ -34,93 +23,32 @@ import { getReadiness } from "@/lib/api";
 
 const primaryNavigation = [
   {
-    label: "Command Center",
-    href: "/",
-    icon: LayoutDashboard,
-    group: "CORE",
-  },
-  {
-    label: "Conversation",
+    label: "对话工作台",
     href: "/chat",
     icon: MessageSquareText,
-    group: "CORE",
-  },
-  {
-    label: "English Coach",
-    href: "/english",
-    icon: Languages,
-    group: "SPECIALISTS",
+    group: "核心",
   },
   {
     label: "学习教练",
     href: "/learning",
     icon: GraduationCap,
-    group: "SPECIALISTS",
+    group: "核心",
   },
+  { label: "成长中心", href: "/growth", icon: Route, group: "模块" },
+  { label: "英语教练", href: "/english", icon: Languages, group: "模块" },
   {
-    label: "Information",
-    href: "/intelligence",
-    icon: Radar,
-    group: "SPECIALISTS",
-  },
-  {
-    label: "Market Monitor",
-    href: "/monitoring",
-    icon: ScanSearch,
-    group: "SPECIALISTS",
-  },
-  { label: "Growth", href: "/growth", icon: Route, group: "SPECIALISTS" },
-  {
-    label: "Career Radar",
+    label: "职业雷达",
     href: "/career",
     icon: BriefcaseBusiness,
-    group: "SPECIALISTS",
+    group: "模块",
   },
-  { label: "Memory", href: "/memory", icon: Brain, group: "SPECIALISTS" },
-  {
-    label: "Observatory",
-    href: "/observatory",
-    icon: Activity,
-    group: "SYSTEMS",
-  },
-  {
-    label: "Cost Center",
-    href: "/cost",
-    icon: CircleDollarSign,
-    group: "SYSTEMS",
-  },
-  {
-    label: "Context",
-    href: "/context",
-    icon: Filter,
-    group: "SYSTEMS",
-  },
-  {
-    label: "Personality",
-    href: "/personality",
-    icon: Smile,
-    group: "SYSTEMS",
-  },
-  {
-    label: "Proactive",
-    href: "/proactive",
-    icon: PartyPopper,
-    group: "SYSTEMS",
-  },
-  {
-    label: "Computer Use",
-    href: "/computer",
-    icon: Computer,
-    group: "SYSTEMS",
-  },
+  { label: "知识库", href: "/knowledge", icon: BookOpen, group: "模块" },
+  { label: "记忆", href: "/memory", icon: Brain, group: "模块" },
 ];
 
 const utilityNavigation = [
   { label: "审批", href: "/approvals", icon: ShieldCheck },
-  { label: "投资", href: "/investment", icon: ChartNoAxesCombined },
-  { label: "知识库", href: "/knowledge", icon: BookOpen },
   { label: "提醒", href: "/notifications", icon: Bell },
-  { label: "评测", href: "/evaluation", icon: FlaskConical },
 ];
 
 function routeIsActive(pathname: string, href: string) {
@@ -243,7 +171,7 @@ export function Sidebar({ hidden }: { hidden: boolean }) {
 
       <div className="sidebar-utility">
         <div className="nav-group-label">
-          <span>SYSTEMS</span>
+          <span>安全与提醒</span>
           <i />
         </div>
         <div className="sidebar-utility-grid">
