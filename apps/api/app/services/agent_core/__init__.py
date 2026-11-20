@@ -34,6 +34,11 @@ from app.services.agent_core.contracts import (
     StepKind,
     StepStatus,
 )
+from app.services.agent_core.enforcement import (
+    ChatRoutePlan,
+    ModelConsentRequired,
+    route_chat_request,
+)
 from app.services.agent_core.policy import ActionPolicy, RiskPolicy
 from app.services.agent_core.registry import (
     AgentNotFoundError,
@@ -84,11 +89,13 @@ __all__ = [
     "ApprovalStatus",
     "DataCategory",
     "DataReference",
+    "ChatRoutePlan",
     "DeepSeekDisclosure",
     "DirectRuntime",
     "FailurePolicy",
     "MemorySpace",
     "ModelCapability",
+    "ModelConsentRequired",
     "ModelPolicyDecision",
     "ModelPolicyRouter",
     "ModelPreference",
@@ -119,6 +126,7 @@ __all__ = [
     "check_shadow_consistency",
     "get_agent_spec",
     "router_enforcement_enabled",
+    "route_chat_request",
     "build_default_registry",
     "IntentDecision",
     "IntentRouter",

@@ -22955,6 +22955,41 @@ body:has(.tablet-terminal) .app-header {
   color: #8fb0c4;
 }
 
+.dialog-suggestion-title,
+.dialog-suggestion-rationale {
+  overflow-wrap: anywhere;
+}
+
+.dialog-suggestion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.dialog-suggestion-actions button {
+  min-height: 32px;
+  white-space: normal;
+}
+
+.dialog-suggestion-error {
+  margin: 8px 0 0;
+  color: #fda4af;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.dialog-suggestion-category-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  color: #bae6fd;
+  font-size: 12px;
+}
+
 .dialog-run-agent {
   font-weight: 600;
   color: #e0f7ff;
@@ -23149,4 +23184,3 @@ body:has(.tablet-terminal) .app-header {
   font-size: 12px;
   color: #8fb0c4;
 }
-

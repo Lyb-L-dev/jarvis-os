@@ -16,13 +16,14 @@ function Install-VoiceModel {
     param(
         [string]$DisplayName,
         [string]$ModelName,
+        [string]$Release = "tts-models",
         [string[]]$ExpectedPaths,
         [string]$RuntimeLink
     )
 
     $ModelPath = Join-Path $VoiceRoot $ModelName
     $ArchivePath = Join-Path $VoiceRoot "$ModelName.tar.bz2"
-    $ModelUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/$ModelName.tar.bz2"
+    $ModelUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/$Release/$ModelName.tar.bz2"
     $ModelReady = $true
     foreach ($RelativePath in $ExpectedPaths) {
         if (-not (Test-Path -LiteralPath (Join-Path $ModelPath $RelativePath))) {
@@ -118,4 +119,16 @@ Install-VoiceModel `
     ) `
     -RuntimeLink "C:\tmp\jarvis-voice-en-model"
 
-Write-Host "Jarvis bilingual offline voices are ready."
+Install-VoiceModel `
+    -DisplayName "Chinese-English streaming speech recognition" `
+    -ModelName "sherpa-onnx-streaming-zipformer-small-bilingual-zh-en-2023-02-16" `
+    -Release "asr-models" `
+    -ExpectedPaths @(
+        "encoder-epoch-99-avg-1.int8.onnx",
+        "decoder-epoch-99-avg-1.onnx",
+        "joiner-epoch-99-avg-1.int8.onnx",
+        "tokens.txt"
+    ) `
+    -RuntimeLink "C:\tmp\jarvis-stt-model"
+
+Write-Host "Jarvis bilingual offline speech models are ready."

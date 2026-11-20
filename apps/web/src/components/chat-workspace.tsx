@@ -13,30 +13,43 @@ import { DialogWorkspacePanel } from "@/components/chat/dialog-workspace-panel";
 import { MemoryCandidatePanel } from "@/components/chat/memory-candidate-panel";
 import { useChatStream } from "@/components/chat/use-chat-stream";
 import { useConversationList } from "@/components/chat/use-conversation-list";
-import { useDictation } from "@/components/chat/use-dictation";
+import { useVoiceLoop } from "@/components/chat/use-voice-loop";
 
 export function ChatWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const cancelVoiceRef = useRef<() => void>(() => undefined);
 
   const list = useConversationList({ setError });
-  const dictation = useDictation({ input, setInput, setError });
   const stream = useChatStream({
     list,
     makeConversation: list.makeConversation,
-    stopDictation: dictation.stopDictation,
+    stopDictation: () => cancelVoiceRef.current(),
     input,
     setInput,
     setError,
   });
+  const voice = useVoiceLoop({
+    setInput,
+    setError,
+    onTranscript: stream.submitMessage,
+  });
 
-  const workspaceState: AIState = dictation.listening
+  useEffect(() => {
+    cancelVoiceRef.current = voice.cancel;
+  }, [voice.cancel]);
+
+  const workspaceState: AIState = voice.state === "listening"
     ? "listening"
-    : stream.sending
+    : voice.state === "transcribing" ||
+        voice.state === "responding" ||
+        stream.sending
       ? stream.streamHasContent
         ? "speaking"
         : "thinking"
+      : voice.state === "speaking"
+        ? "speaking"
       : error
         ? "error"
         : "idle";
@@ -130,8 +143,13 @@ export function ChatWorkspace() {
               setTaskNotice={stream.setTaskNotice}
               captureNotice={stream.captureNotice}
               setCaptureNotice={stream.setCaptureNotice}
-              listening={dictation.listening}
-              onToggleDictation={dictation.toggleDictation}
+              voiceState={voice.state}
+              voiceAvailable={voice.available}
+              voiceReason={voice.status?.reason ?? null}
+              onToggleVoice={() => {
+                if (stream.sending) void stream.stopGeneration();
+                voice.toggle();
+              }}
               input={input}
               setInput={setInput}
               sending={stream.sending}

@@ -9,6 +9,7 @@ the local Ollama embedding endpoint.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -40,6 +41,11 @@ from app.services.semantic_index import (
     indexed_source_counts,
     invalidate_semantic_source,
     semantic_index_supported,
+)
+from app.services.ui_event_feed import (
+    AggregateRef,
+    PostgresUiEventStore,
+    UiEventFeed,
 )
 
 EMBEDDING_DIMENSIONS = 1024
@@ -687,3 +693,195 @@ async def test_memory_network_invalid_status_is_rejected(
     pg_session.add(row)
     with pytest.raises(IntegrityError):
         await pg_session.commit()
+
+
+async def test_memory_entity_concurrent_insert_converges_on_unique_identity(
+    pg_engine: AsyncEngine,
+    pg_session: AsyncSession,
+) -> None:
+    """Two real PG transactions cannot create the same current entity."""
+
+    from app.db.models import MemoryEntity
+    from app.services import memory_network_service as service
+
+    user = await create_user(pg_session)
+    factory = async_sessionmaker(pg_engine, expire_on_commit=False)
+
+    async def insert_once() -> tuple[uuid.UUID, bool]:
+        async with factory() as session:
+            entity, created = await service._ensure_entity(
+                session,
+                user_id=user.id,
+                entity_type="topic",
+                name="PG 并发唯一主题",
+                source_kind="manual",
+                source_id=None,
+            )
+            await session.commit()
+            return entity.id, created
+
+    results = await asyncio.gather(insert_once(), insert_once())
+    assert {entity_id for entity_id, _created in results} == {results[0][0]}
+    assert sorted(created for _entity_id, created in results) == [False, True]
+    rows = list(
+        await pg_session.scalars(
+            select(MemoryEntity).where(
+                MemoryEntity.user_id == user.id,
+                MemoryEntity.normalized_key == "pg 并发唯一主题".casefold(),
+                MemoryEntity.status.in_(("candidate", "active")),
+            )
+        )
+    )
+    assert len(rows) == 1
+
+
+async def test_memory_event_entity_rejects_missing_entity_fk(
+    pg_session: AsyncSession,
+) -> None:
+    from app.db.models import MemoryEvent, MemoryEventEntity
+
+    user = await create_user(pg_session)
+    event = MemoryEvent(
+        user_id=user.id,
+        event_type="goal_set",
+        happened_at=datetime.now(UTC),
+        ingested_at=datetime.now(UTC),
+        summary="PG FK event",
+        source_kind="manual",
+        status="candidate",
+    )
+    pg_session.add(event)
+    await pg_session.flush()
+    pg_session.add(
+        MemoryEventEntity(
+            user_id=user.id,
+            event_id=event.id,
+            entity_id=uuid.uuid4(),
+        )
+    )
+    with pytest.raises(IntegrityError):
+        await pg_session.commit()
+
+
+async def test_memory_network_hardening_indexes_are_used_for_lookup(
+    pg_session: AsyncSession,
+) -> None:
+    user = await create_user(pg_session)
+    await pg_session.execute(text("SET LOCAL enable_seqscan = off"))
+
+    statements = {
+        "uq_memory_entities_current_identity": text(
+            "EXPLAIN SELECT id FROM memory_entities "
+            "WHERE user_id = :user_id AND entity_type = 'topic' "
+            "AND normalized_key = 'index-check' AND deleted_at IS NULL "
+            "AND status IN ('candidate', 'active')"
+        ),
+        "uq_memory_relations_current_assertion": text(
+            "EXPLAIN SELECT id FROM memory_relations "
+            "WHERE user_id = :user_id AND from_entity_id = :entity_id "
+            "AND relation_type = 'relates_to' AND to_entity_id = :entity_id "
+            "AND deleted_at IS NULL AND valid_until IS NULL "
+            "AND status IN ('candidate', 'active')"
+        ),
+        "ix_memory_event_entities_user_entity": text(
+            "EXPLAIN SELECT event_id FROM memory_event_entities "
+            "WHERE user_id = :user_id AND entity_id = :entity_id"
+        ),
+    }
+    for index_name, statement in statements.items():
+        rows = await pg_session.execute(
+            statement,
+            {"user_id": user.id, "entity_id": uuid.uuid4()},
+        )
+        plan = "\n".join(row[0] for row in rows)
+        assert index_name in plan, plan
+
+
+async def test_ui_event_log_is_monotonic_and_replays_across_sessions(
+    pg_engine: AsyncEngine,
+) -> None:
+    factory = async_sessionmaker(pg_engine, expire_on_commit=False)
+
+    async def publish(index: int) -> tuple[int, int]:
+        async with factory() as session:
+            item = await UiEventFeed(PostgresUiEventStore(session)).publish(
+                "agent_run.changed",
+                AggregateRef("agent_run", f"run-{index}"),
+            )
+            await session.commit()
+            return item.event_id, item.data_version
+
+    published = await asyncio.gather(*(publish(index) for index in range(6)))
+    event_ids = sorted(event_id for event_id, _version in published)
+
+    assert len(set(event_ids)) == 6
+    assert all(event_id == version for event_id, version in published)
+    async with factory() as restarted_session:
+        restarted_feed = UiEventFeed(PostgresUiEventStore(restarted_session))
+        replay = await restarted_feed.stream(event_ids[1])
+        assert [item.event_id for item in replay.events] == event_ids[2:]
+        assert replay.resumable is True
+
+
+async def test_ui_event_log_schema_has_no_private_payload_and_uses_replay_index(
+    pg_session: AsyncSession,
+) -> None:
+    columns = set(
+        await pg_session.scalars(
+            text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = current_schema() "
+                "AND table_name = 'ui_events'"
+            )
+        )
+    )
+    assert columns == {
+        "id",
+        "event_type",
+        "aggregate_type",
+        "aggregate_ref",
+        "data_version",
+        "created_at",
+        "expires_at",
+    }
+
+    await pg_session.execute(text("SET LOCAL enable_seqscan = off"))
+    rows = await pg_session.execute(
+        text(
+            "EXPLAIN SELECT id FROM ui_events "
+            "WHERE expires_at > now() AND id > 0 ORDER BY id LIMIT 256"
+        )
+    )
+    plan = "\n".join(row[0] for row in rows)
+    assert "ix_ui_events_expires_id" in plan or "pk_ui_events" in plan, plan
+
+
+async def test_ui_event_outbox_commits_and_rolls_back_with_business_state(
+    pg_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.db.models import ChatConversation, UiEventRecord
+    from app.services import ui_event_feed as event_module
+
+    monkeypatch.setattr(
+        event_module,
+        "get_settings",
+        lambda: Settings(_env_file=None, v3_reliable_event_feed_enabled=True),
+    )
+    user = await create_user(pg_session)
+    user_id = user.id
+
+    rolled_back = ChatConversation(user_id=user_id, title="rollback")
+    pg_session.add(rolled_back)
+    await pg_session.flush()
+    assert await pg_session.scalar(select(UiEventRecord.id)) is not None
+    await pg_session.rollback()
+    assert await pg_session.scalar(select(UiEventRecord.id)) is None
+
+    committed = ChatConversation(user_id=user_id, title="commit")
+    pg_session.add(committed)
+    await pg_session.commit()
+    event_record = await pg_session.scalar(select(UiEventRecord))
+    assert event_record is not None
+    assert event_record.aggregate_type == "conversation"
+    assert event_record.aggregate_ref == str(committed.id)

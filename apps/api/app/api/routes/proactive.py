@@ -11,9 +11,17 @@ from app.core.config import Settings, get_settings
 from app.db.models import User
 from app.db.session import get_db_session
 from app.schemas.proactive import (
+    ConversationProactiveFeed,
+    ProactiveCategoryState,
+    ProactiveCategoryUpdate,
     ProactiveOverview,
     ProactiveScanResult,
     ProactiveSuggestionItem,
+)
+from app.services.conversational_proactive import (
+    ConversationalProactive,
+    ConversationalProactiveStateError,
+    ConversationalProactiveUnavailableError,
 )
 from app.services.proactive import (
     decide_suggestion,
@@ -25,6 +33,12 @@ from app.services.proactive import (
 router = APIRouter(prefix="/proactive")
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
 RuntimeSettings = Annotated[Settings, Depends(get_settings)]
+
+
+def _conversation_error(error: RuntimeError) -> HTTPException:
+    if isinstance(error, ConversationalProactiveUnavailableError):
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error))
+    return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error))
 
 
 async def current_user(db: AsyncSession) -> User:
@@ -70,6 +84,80 @@ async def run_proactive_scan(
 ) -> ProactiveScanResult:
     user = await current_user(db)
     return await scan_proactive_suggestions(db, user.id, settings)
+
+
+@router.get("/conversation/feed", response_model=ConversationProactiveFeed)
+async def get_conversation_proactive_feed(
+    db: DatabaseSession,
+    settings: RuntimeSettings,
+    limit: int = Query(default=3, ge=1, le=10),
+) -> ConversationProactiveFeed:
+    user = await current_user(db)
+    try:
+        return await ConversationalProactive(db, settings).feed(user.id, limit=limit)
+    except (ConversationalProactiveUnavailableError, ConversationalProactiveStateError) as error:
+        raise _conversation_error(error) from error
+
+
+@router.post(
+    "/conversation/suggestions/{suggestion_id}/accept",
+    response_model=ProactiveSuggestionItem,
+)
+async def accept_conversation_proactive_suggestion(
+    suggestion_id: uuid.UUID,
+    db: DatabaseSession,
+    settings: RuntimeSettings,
+) -> ProactiveSuggestionItem:
+    user = await current_user(db)
+    try:
+        return await ConversationalProactive(db, settings).decide(
+            user.id,
+            suggestion_id,
+            "accept",
+        )
+    except (ConversationalProactiveUnavailableError, ConversationalProactiveStateError) as error:
+        raise _conversation_error(error) from error
+
+
+@router.post(
+    "/conversation/suggestions/{suggestion_id}/dismiss",
+    response_model=ProactiveSuggestionItem,
+)
+async def dismiss_conversation_proactive_suggestion(
+    suggestion_id: uuid.UUID,
+    db: DatabaseSession,
+    settings: RuntimeSettings,
+) -> ProactiveSuggestionItem:
+    user = await current_user(db)
+    try:
+        return await ConversationalProactive(db, settings).decide(
+            user.id,
+            suggestion_id,
+            "dismiss",
+        )
+    except (ConversationalProactiveUnavailableError, ConversationalProactiveStateError) as error:
+        raise _conversation_error(error) from error
+
+
+@router.put(
+    "/conversation/categories/{category}",
+    response_model=ProactiveCategoryState,
+)
+async def update_conversation_proactive_category(
+    category: str,
+    payload: ProactiveCategoryUpdate,
+    db: DatabaseSession,
+    settings: RuntimeSettings,
+) -> ProactiveCategoryState:
+    user = await current_user(db)
+    try:
+        return await ConversationalProactive(db, settings).configure_category(
+            user.id,
+            category,
+            enabled=payload.enabled,
+        )
+    except (ConversationalProactiveUnavailableError, ConversationalProactiveStateError) as error:
+        raise _conversation_error(error) from error
 
 
 @router.post("/suggestions/{suggestion_id}/dismiss", response_model=ProactiveSuggestionItem)

@@ -59,6 +59,18 @@ class AgentRunRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    parent_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("agent_runs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    plan_ref: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("orchestration_plan_drafts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     steps: Mapped[list[AgentRunStepRecord]] = relationship(
         back_populates="run",

@@ -1,6 +1,7 @@
 """V3-1 memory-network candidate adoption rate.
 
-Outputs the V3-1 acceptance metric from docs/JARVIS_OS_V3_PLAN.md section 15:
+Outputs the legacy V3-1 delivery metric recorded in
+docs/JARVIS_OS_V3_DELIVERY_LOG.md:
 
     adoption rate = confirmed / (confirmed + ignored + merged)
 
@@ -8,6 +9,8 @@ Rule extraction (structured sources: growth / english / intelligence /
 investment) and Qwen extraction (unstructured sources: conversation /
 confirmed memory) are reported separately so the two pipelines can be
 baselined independently during the 2-week V3-1 observation window.
+The v1.2 roadmap reports effective-candidate and deduplication rates
+separately; this script remains for reproducibility of the original sample.
 
 Usage:
     python scripts/evaluate-memory-adoption.py [--db-url URL]

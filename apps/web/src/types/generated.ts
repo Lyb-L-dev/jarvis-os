@@ -3456,6 +3456,8 @@ export interface components {
             runtime: components["schemas"]["RuntimeKind"];
             /** Complexity */
             complexity: number;
+            /** Cross Agent Required */
+            cross_agent_required: boolean;
             privacy_level: components["schemas"]["PrivacyLevel"];
             risk_level: components["schemas"]["RiskLevel"];
             disposition: components["schemas"]["PolicyDisposition"];
@@ -3501,7 +3503,7 @@ export interface components {
              * Source
              * @enum {string}
              */
-            source: "tool" | "model";
+            source: "tool" | "model" | "draft";
             status: components["schemas"]["ApprovalStatus"];
             /** Title */
             title: string;

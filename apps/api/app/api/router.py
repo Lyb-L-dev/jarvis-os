@@ -21,6 +21,7 @@ from app.api.routes import (
     notifications,
     observatory,
     onboarding,
+    orchestrator,
     personality,
     proactive,
     profile,
@@ -29,11 +30,13 @@ from app.api.routes import (
     system,
     tools,
     ui,
+    voice,
 )
 
 api_router = APIRouter()
 api_router.include_router(health.router, prefix="/health", tags=["health"])
 api_router.include_router(onboarding.router, prefix="/onboarding", tags=["onboarding"])
+api_router.include_router(orchestrator.router, tags=["orchestrator"])
 api_router.include_router(models.router, prefix="/models", tags=["models"])
 api_router.include_router(profile.router, prefix="/profile", tags=["profile"])
 api_router.include_router(chat.router, prefix="/chat", tags=["chat"])
@@ -72,3 +75,4 @@ api_router.include_router(personality.router, tags=["personality"])
 api_router.include_router(proactive.router, tags=["proactive"])
 api_router.include_router(computer.router, tags=["computer-use"])
 api_router.include_router(ui.router, tags=["ui"])
+api_router.include_router(voice.router, tags=["voice"])

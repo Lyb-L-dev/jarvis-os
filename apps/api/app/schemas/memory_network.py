@@ -1,4 +1,4 @@
-"""V3-1 memory network API DTOs (frozen by Tech Lead, docs/JARVIS_OS_V3_PLAN.md §15)."""
+"""V3-1 memory DTOs; design source: ADR-0012, delivery log: V3-1."""
 
 from __future__ import annotations
 

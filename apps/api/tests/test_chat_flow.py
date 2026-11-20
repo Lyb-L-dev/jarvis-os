@@ -190,6 +190,62 @@ async def test_router_v2_shadow_recommends_deepseek_but_legacy_route_stays_mimo(
     assert response.assistant_message.metadata["agent_routing"]["shadow_only"] is True
 
 
+async def test_router_v2_enforcement_routes_allowlisted_chat_and_keeps_consent_gate(
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    providers: list[str] = []
+
+    async def fake_model_call(
+        settings: Settings,
+        route: ResolvedRoute,
+        messages: object,
+    ) -> ChatResult:
+        del settings, messages
+        providers.append(route.provider_used)
+        return ChatResult(content="真实切流完成。", model=route.model_used, usage={})
+
+    monkeypatch.setattr(chat_routes, "execute_model_call", fake_model_call)
+    settings = Settings(
+        _env_file=None,
+        deepseek_api_key="sk-deepseek-test",
+        v2_router_enforcement_enabled=True,
+        v2_router_enforcement_intents="research",
+    )
+    conversation = await chat_routes.create_conversation(
+        ConversationCreate(model_mode=ModelMode.AUTO),
+        db_session,
+    )
+    payload = ChatSendRequest(
+        content="深入研究国际 AI 产业趋势并进行多来源对比",
+        mode=ModelMode.AUTO,
+    )
+
+    with pytest.raises(HTTPException) as error:
+        await chat_routes.send_message(
+            conversation.id,
+            payload,
+            db_session,
+            settings,
+        )
+
+    assert error.value.status_code == 409
+    assert providers == []
+    assert await db_session.scalar(select(func.count(ChatMessage.id))) == 0
+
+    response = await chat_routes.send_message(
+        conversation.id,
+        payload.model_copy(update={"paid_call_confirmed": True}),
+        db_session,
+        settings,
+    )
+
+    assert providers == ["deepseek"]
+    assert response.routing.provider_used == "deepseek"
+    assert response.agent_routing is not None
+    assert response.agent_routing.shadow_only is False
+
+
 async def test_router_v2_shadow_can_be_disabled(
     db_session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,

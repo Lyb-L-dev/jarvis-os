@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from app.core.config import Settings, get_settings
 from app.db.models import (
     AgentApprovalRecord,
+    DraftReviewRecord,
     ToolApprovalRecord,
     ToolExecutionRecord,
     User,
@@ -310,6 +311,14 @@ async def get_approval_center(
         .unique()
         .all()
     )
+    draft_reviews = list(
+        await db.scalars(
+            select(DraftReviewRecord)
+            .where(DraftReviewRecord.user_id == user.id)
+            .order_by(DraftReviewRecord.created_at.desc())
+            .limit(limit)
+        )
+    )
     items = [
         ApprovalCenterItem(
             id=item.id,
@@ -352,6 +361,26 @@ async def get_approval_center(
             updated_at=item.updated_at,
         )
         for item in agent_approvals
+    )
+    items.extend(
+        ApprovalCenterItem(
+            id=item.id,
+            source="draft",
+            status=item.status,
+            title=item.title,
+            reason_code=item.reason_code,
+            risk_level="R1",
+            agent_id="jarvis_core",
+            preview={
+                "draft_kind": item.draft_kind,
+                "draft_ref": str(item.draft_ref),
+            },
+            run_id=item.run_id,
+            decided_at=item.decided_at,
+            created_at=item.created_at,
+            updated_at=item.updated_at,
+        )
+        for item in draft_reviews
     )
     items.sort(key=lambda item: item.created_at, reverse=True)
     items = items[:limit]

@@ -51,6 +51,7 @@ from app.db.models.memory import Memory, MemoryRevision
 from app.db.models.memory_network import (
     MemoryEntity,
     MemoryEvent,
+    MemoryEventEntity,
     MemoryRelation,
 )
 from app.db.models.memory_shadow import MemoryShadowCandidate, MemoryShadowRun
@@ -63,7 +64,8 @@ from app.db.models.notification import (
     ScheduledJob,
 )
 from app.db.models.onboarding import OnboardingSession
-from app.db.models.proactive import ProactiveSuggestion
+from app.db.models.orchestrator import DraftReviewRecord, OrchestrationPlanDraft
+from app.db.models.proactive import ProactiveCategoryPreference, ProactiveSuggestion
 from app.db.models.research import ResearchReport, ResearchRequest, ResearchSource
 from app.db.models.semantic import SemanticIndexEntry, SemanticIndexState
 from app.db.models.tool import (
@@ -71,6 +73,7 @@ from app.db.models.tool import (
     ToolExecutionEventRecord,
     ToolExecutionRecord,
 )
+from app.db.models.ui_event import UiEventRecord
 from app.db.models.user import User, UserPreference, UserProfile
 
 __all__ = [
@@ -87,6 +90,7 @@ __all__ = [
     "CompanionDevice",
     "DailyPlan",
     "DeliveryAttempt",
+    "DraftReviewRecord",
     "EnglishMessage",
     "EnglishMistake",
     "EnglishReview",
@@ -103,6 +107,7 @@ __all__ = [
     "MemoryRevision",
     "MemoryEntity",
     "MemoryEvent",
+    "MemoryEventEntity",
     "MemoryRelation",
     "MemoryShadowCandidate",
     "MemoryShadowRun",
@@ -126,8 +131,10 @@ __all__ = [
     "Notification",
     "NotificationPreference",
     "OnboardingSession",
+    "OrchestrationPlanDraft",
     "PortfolioPosition",
     "ProactiveSuggestion",
+    "ProactiveCategoryPreference",
     "ResearchReport",
     "ResearchRequest",
     "ResearchSource",
@@ -138,6 +145,7 @@ __all__ = [
     "ToolApprovalRecord",
     "ToolExecutionEventRecord",
     "ToolExecutionRecord",
+    "UiEventRecord",
     "User",
     "UserPreference",
     "UserProfile",

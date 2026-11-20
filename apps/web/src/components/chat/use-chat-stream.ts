@@ -60,10 +60,10 @@ export function useChatStream({
     [list.detail?.messages],
   );
 
-  async function submitMessage() {
-    const content = input.trim();
-    if (!content || sending) return;
-    stopDictation();
+  async function submitMessage(contentOverride?: string): Promise<string | null> {
+    const content = (contentOverride ?? input).trim();
+    if (!content || sending) return null;
+    if (contentOverride === undefined) stopDictation();
     let routePreview: import("@/lib/api").AgentRouting | null = null;
     if (list.mode === "deep" && !sensitive) {
       try {
@@ -82,7 +82,7 @@ export function useChatStream({
       list.mode === "deep" && !sensitive
         ? window.confirm(deepSeekConfirmationText(routePreview, "生成回答"))
         : false;
-    if (list.mode === "deep" && !sensitive && !paidCallConfirmed) return;
+    if (list.mode === "deep" && !sensitive && !paidCallConfirmed) return null;
 
     setSending(true);
     setStreamHasContent(false);
@@ -92,6 +92,7 @@ export function useChatStream({
 
     let targetId = list.activeId;
     let currentDetail = list.detail;
+    let completedResponse: string | null = null;
     try {
       if (!targetId) {
         const created = await makeConversation();
@@ -175,6 +176,7 @@ export function useChatStream({
           },
           onError: (message) => setError(message),
           onDone: (response) => {
+            completedResponse = response.assistant_message.content;
             list.setAgentRouting(response.agent_routing ?? null);
             if (response.memory_candidates_created > 0) {
               setMemoryNotice(
@@ -236,6 +238,7 @@ export function useChatStream({
       setStreamHasContent(false);
       setSending(false);
     }
+    return completedResponse;
   }
 
   async function stopGeneration() {

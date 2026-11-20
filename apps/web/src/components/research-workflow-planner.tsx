@@ -5,6 +5,7 @@ import {
   addResearchManualSource,
   archiveKnowledgeSource,
   cancelResearchWorkflow,
+  createResearchGrowthPreview,
   listResearchWorkflows,
   resumeResearchWorkflow,
   startResearchWorkflow,
@@ -324,6 +325,25 @@ export function ResearchWorkflowPlanner({
     } catch (actionError) {
       setError(
         actionError instanceof Error ? actionError.message : "Obsidian 归档未完成。",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function proposeGrowthDraft() {
+    if (!run?.report) return;
+    setBusy("orchestration-preview");
+    setError(null);
+    setNotice(null);
+    try {
+      await createResearchGrowthPreview(run.report.id);
+      setNotice("成长任务草稿的编排计划已生成。请在 Approval Center 审阅；通过前不会启动编排。 ");
+    } catch (actionError) {
+      setError(
+        actionError instanceof Error
+          ? actionError.message
+          : "编排计划预览未生成。",
       );
     } finally {
       setBusy(null);
@@ -676,6 +696,7 @@ export function ResearchWorkflowPlanner({
                   <p>{run.report.executive_summary}</p>
                   <small>已确认，但不会自动写入 Obsidian。投资相关内容不构成投资建议，也不会触发交易。</small>
                 </div>
+                <button disabled={busy !== null} onClick={() => void proposeGrowthDraft()} type="button"><FlaskConical size={15} />{busy === "orchestration-preview" ? "正在生成计划…" : "生成成长草稿计划"}</button>
                 {run.report.status === "archived" || archiveOutcome ? (
                   <a className="primary-button" href={archiveOutcome?.target_obsidian_uri} rel="noreferrer">在 Obsidian 打开</a>
                 ) : (

@@ -45,6 +45,7 @@ class IntentDecision(ContractModel):
     intent_type: IntentType
     agent_id: AgentId
     complexity: int = Field(ge=0, le=10)
+    cross_agent_required: bool = False
     privacy_level: PrivacyLevel
     requested_action: ActionKind
     requested_capabilities: frozenset[ModelCapability]
@@ -88,6 +89,7 @@ class AgentRouteDecision(ContractModel):
     intent_type: IntentType
     runtime: RuntimeKind
     complexity: int
+    cross_agent_required: bool
     privacy_level: PrivacyLevel
     risk_level: RiskLevel
     disposition: PolicyDisposition
@@ -263,6 +265,13 @@ class IntentRouter:
         complex_hits = sum(signal in normalized for signal in _COMPLEX_SIGNALS)
         base_complexity = 6 if agent_id in {AgentId.RESEARCH, AgentId.GROWTH} else 3
         complexity = min(10, base_complexity + complex_hits * 2)
+        cross_agent_required = bool(
+            request.preferred_agent is None
+            and scores.get(AgentId.RESEARCH, 0)
+            and scores.get(AgentId.GROWTH, 0)
+        )
+        if cross_agent_required:
+            complexity = max(complexity, 7)
         if request.model_preference is ModelPreference.DEEP:
             complexity = max(complexity, 9)
 
@@ -278,6 +287,7 @@ class IntentRouter:
             intent_type=matched_rule.intent,
             agent_id=agent_id,
             complexity=complexity,
+            cross_agent_required=cross_agent_required,
             privacy_level=privacy,
             requested_action=action,
             requested_capabilities=frozenset(capabilities),
@@ -417,7 +427,7 @@ class PolicyRouter:
 
 
 class RouterV2:
-    """Pure shadow router. It never calls a model, tool, or runtime."""
+    """Pure decision module. It never calls a model, tool, or runtime."""
 
     def __init__(self, settings: Settings, registry: AgentRegistry) -> None:
         self.registry = registry
@@ -442,6 +452,7 @@ class RouterV2:
             intent_type=intent.intent_type,
             runtime=runtime.runtime,
             complexity=intent.complexity,
+            cross_agent_required=intent.cross_agent_required,
             privacy_level=intent.privacy_level,
             risk_level=policy.risk_level,
             disposition=policy.disposition,

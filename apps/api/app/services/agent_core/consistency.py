@@ -44,11 +44,7 @@ class ShadowConsistencyResult:
 
 
 def router_enforcement_enabled(settings: Settings) -> bool:
-    """Reading point for ``v2_router_enforcement_enabled`` (Stage 1).
-
-    Tech Lead owns the flag contract in ``config.py``; until it lands the
-    getattr default keeps enforcement off.
-    """
+    """Single rollback reading point for RouterV2 gray enforcement."""
 
     return bool(getattr(settings, "v2_router_enforcement_enabled", False))
 

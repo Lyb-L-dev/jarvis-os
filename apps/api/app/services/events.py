@@ -1,13 +1,11 @@
-"""V3-0 in-process SSE event bus (single-user local).
+"""V3-0 in-process SSE fallback bus (single-user local).
 
-The bus is deliberately in-memory and per-process: the local app runs one
-FastAPI worker, so event delivery does not need Redis or a shared store.
-V3-4a will additionally persist approval/reminder events to PostgreSQL
-(reusing the notifications table) so a restart never loses them.
+The V3-1.5 reliable path lives in ``ui_event_feed`` and uses PostgreSQL.
+This bus remains intact behind the reliable-feed flag so rollback immediately
+returns SSE to the original snapshot + polling behavior.
 
 Consumers: the ``/ui/events`` route subscribes per connection; dialog
-data_version polling happens inside the route, while the bus is ready for
-future live publishers (agent run / approval / reminder / proactive).
+data_version polling happens inside the legacy route.
 """
 
 from __future__ import annotations

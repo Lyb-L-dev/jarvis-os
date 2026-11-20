@@ -182,7 +182,8 @@ flowchart TB
         ENUM["db/enums.py + CHECK 约束<br/>AgentApproval/Memory/ToolExecution/AgentRun"]
         CKPT["db/checkpoint.py<br/>checkpointer 下沉（H2）"]
         PROMPT["services/prompts/**<br/>24 模板 + 版本注册表（flag 灰度）"]
-        ROUTER2["Router v2 阶段 1 一致性校验<br/>Policy 审计读取点"]
+        ROUTER2["RouterV2 影子比较 + 按意图灰度切流<br/>Policy 审计读取点"]
+        EVENTS["ui_event_feed<br/>PG 事件日志 + 内存测试适配器"]
         REG["Agent Registry<br/>effective_tools 派生视图 + R1-R5 对账"]
         MROUTE["后台模型调用统一走 ModelRouter"]
         CU3["Computer-use 阶段 3<br/>沙箱确认后修改（R2）"]
@@ -194,6 +195,7 @@ flowchart TB
     CORE --> CKPT
     CORE --> PROMPT
     CORE --> ROUTER2
+    CORE --> EVENTS
     CORE --> REG
     CORE --> MROUTE
     CORE --> CU3
@@ -205,9 +207,12 @@ flowchart TB
 
 - **数据层**：Repository/UoW 为新增边界（未强制迁移全部 service，渐进推进）；
   状态枚举四层统一（DB CHECK + Pydantic + TS union，AgentRun 命名联合为遗留项）；
-- **AI 层**：Prompt 注册表、Router 一致性校验、workflow 走 AgentSpec 均默认关
+- **AI 层**：Prompt 注册表、RouterV2 真实切流、workflow 走 AgentSpec 均默认关；Router 只有在
+  `v2_router_enforcement_enabled` 与意图 allowlist 同时命中时才接管，关闭后回到 ModelRouter
   （`v2_prompt_registry_enabled` / `v2_router_enforcement_enabled` / `v2_policy_enforcement_enabled`），
-  开即逐字等价或仅审计；
+  DeepSeek Model Consent、隐私路由和 provider fallback 保持原不变量；
+- **事件层**：`v3_reliable_event_feed_enabled` 开启后使用 PostgreSQL 内容无关事件日志和事务
+  Outbox；关闭后回到 V3-0 snapshot、心跳与版本轮询；
 - **工具层**：Computer-use 阶段 3 已启用（`computer_use_stage=3`，R2 预览-批准-执行 +
   沙箱备份 + 可回滚）；n8n 测试账号工作流为环境门控（`available=False`）；
 - **前端**：`lib/api.ts` 为兼容层（372 导出冻结），领域实现在 `lib/api/**`；
